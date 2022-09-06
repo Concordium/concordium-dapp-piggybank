@@ -1,7 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 
-import RootWalletConnect2 from './RootWalletConnect2';
+import RootWalletConnect1 from './RootWalletConnect1';
 
 import './index.css';
 
@@ -12,4 +12,4 @@ if (!container) {
 }
 
 const root = createRoot(container);
-root.render(<RootWalletConnect2 />);
+root.render(<RootWalletConnect1 />);
