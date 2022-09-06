@@ -1,8 +1,29 @@
 /* eslint-disable no-console */
 import React, { useEffect, useState } from 'react';
 import SignClient from '@walletconnect/sign-client';
+import QRCodeModal from '@walletconnect/qrcode-modal';
 
-async function initClient(setClient: (client: SignClient) => void, onSessionUpdate) {
+function onSessionConnected(session) {
+    console.debug({ session });
+}
+
+function onSessionUpdate(updatedSession) {
+    console.debug('onSessionUpdate', { updatedSession });
+}
+
+function onSessionEvent(event) {
+    console.debug('onSessionEvent', { event });
+    // Handle session events, such as "chainChanged", "accountsChanged", etc.
+}
+
+function onSessionDelete() {
+    console.debug('session_delete');
+    // Session was deleted -> reset the dapp state, clean up from user session, etc.
+}
+
+async function initClient(setClient: (client: SignClient) => void) {
+    console.log('Initializing client.');
+
     const client = await SignClient.init({
         projectId: '76324905a70fe5c388bab46d3e0564dc',
         metadata: {
@@ -12,11 +33,9 @@ async function initClient(setClient: (client: SignClient) => void, onSessionUpda
             icons: ['https://walletconnect.com/walletconnect-logo.png'],
         },
     });
-    setClient(client);
 
     client.on('session_event', ({ event }) => {
-        console.debug('session_event', { event });
-        // Handle session events, such as "chainChanged", "accountsChanged", etc.
+        onSessionEvent(event);
     });
 
     client.on('session_update', ({ topic, params }) => {
@@ -30,9 +49,52 @@ async function initClient(setClient: (client: SignClient) => void, onSessionUpda
     });
 
     client.on('session_delete', () => {
-        console.debug('session_delete');
-        // Session was deleted -> reset the dapp state, clean up from user session, etc.
+        onSessionDelete();
     });
+
+    setClient(client);
+}
+
+async function connect(client: SignClient) {
+    if (!client) {
+        return console.error('Cannot connect without a client.');
+    }
+    console.log('Opening modal for connecting wallet.');
+    try {
+        const { uri, approval } = await client.connect({
+            // Optionally: pass a known prior pairing (e.g. from `client.pairing.values`) to skip the `uri` step.
+            //   pairingTopic: client.pairing.values?.topic,
+            // Provide the namespaces and chains (e.g. `eip155` for EVM-based chains) we want to use in this session.
+            requiredNamespaces: {
+                eip155: {
+                    methods: [
+                        'eth_sendTransaction',
+                        'eth_signTransaction',
+                        'eth_sign',
+                        'personal_sign',
+                        'eth_signTypedData',
+                    ],
+                    chains: ['eip155:1'],
+                    events: ['chainChanged', 'accountsChanged'],
+                },
+            },
+        });
+
+        // Open QRCode modal if a URI was returned (i.e. we're not connecting an existing pairing).
+        if (uri) {
+            QRCodeModal.open(uri, () => {
+                console.log('QR Code Modal closed');
+            });
+        }
+
+        // Await session approval from the wallet.
+        const session = await approval();
+        // Handle the returned session (e.g. update UI to "connected" state).
+        return onSessionConnected(session);
+    } finally {
+        // Close the QRCode modal in case it was open.
+        QRCodeModal.close();
+    }
 }
 
 /**
@@ -40,57 +102,23 @@ async function initClient(setClient: (client: SignClient) => void, onSessionUpda
  */
 export default function Root() {
     const [client, setClient] = useState<SignClient>();
-    // const [isConnected, setIsConnected] = useState<boolean>(false);
-    // const [isVersion0, setIsVersion0] = useState<boolean>(false);
-
-    // const handleGetAccount = useCallback((accountAddress: string | undefined) => {
-    //     setAccount(accountAddress);
-    //     setIsConnected(Boolean(accountAddress));
-    // }, []);
-
-    // const handleOnClick = useCallback(
-    //     () =>
-    //         detectConcordiumProvider()
-    //             .then((provider) => provider.connect())
-    //             .then(handleGetAccount),
-    //     []
-    // );
 
     // Initialize Wallet Connect client.
     useEffect(() => {
-        initClient(setClient, (a, b, c) => {
-            console.debug({ a, b, c });
-        });
+        // Client cannot have been already initialized here.
+        initClient(setClient);
     }, []);
 
-    // const stateValue: State = useMemo(() => ({ isConnected, account }), [isConnected, account]);
+    console.debug('client', client);
 
     return (
-        <>
-            {client && <div>Client initialized!</div>}
+        <div className={`connection-banner ${client ? 'connected' : ''}`}>
+            {client && (
+                <button type="button" onClick={() => connect(client)}>
+                    Connect wallet
+                </button>
+            )}
             {!client && <div>Client not initialized!</div>}
-        </>
-        // // Setup a globally accessible state with data from the wallet.
-        // <state.Provider value={stateValue}>
-        //     <button type="button" onClick={() => setIsVersion0((v) => !v)}>
-        //         Switch to {isVersion0 ? 'V1' : 'V0'}
-        //     </button>
-        //     <main className="piggybank">
-        //         <div className={`connection-banner ${isConnected ? 'connected' : ''}`}>
-        //             {isConnected && `Connected: ${account}`}
-        //             {!isConnected && (
-        //                 <>
-        //                     <p>No wallet connection</p>
-        //                     <button type="button" onClick={handleOnClick}>
-        //                         Connect
-        //                     </button>
-        //                 </>
-        //             )}
-        //         </div>
-        //         <br />
-        //         {isVersion0 && <PiggyBankV0 />}
-        //         {!isVersion0 && <PiggyBankV1 />}
-        //     </main>
-        // </state.Provider>
+        </div>
     );
 }
