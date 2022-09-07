@@ -4,6 +4,8 @@ import WalletConnect from '@walletconnect/client';
 import QRCodeModal from '@walletconnect/qrcode-modal';
 
 function onConnect(accounts, chainId) {
+    // accounts: string array
+    // chainId: number
     console.debug('onConnect', { accounts, chainId });
 }
 
@@ -29,7 +31,6 @@ async function initConnector(setConnector: (client: WalletConnect) => void) {
             throw error;
         }
 
-        // Get provided accounts and chainId
         const { accounts, chainId } = payload.params[0];
         onConnect(accounts, chainId);
     });
@@ -78,7 +79,14 @@ export default function Root() {
                     Create session
                 </button>
             )}
-            {connector && connector.connected && <div>Connector initialized and connected!</div>}
+            {connector && connector.connected && (
+                <>
+                    <div>Connector initialized and connected!</div>
+                    <button type="button" onClick={() => connector.killSession()}>
+                        Kill session
+                    </button>
+                </>
+            )}
         </div>
     );
 }
