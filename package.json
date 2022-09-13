@@ -1,0 +1,46 @@
+{
+    "name": "piggybank",
+    "packageManager": "yarn@3.2.0",
+    "lint-staged": {
+        "*.{js,jsx,ts,tsx}": [
+            "eslint --cache --fix --max-warnings 0"
+        ],
+        "{*.json,.{eslintrc,prettierrc,stylelintrc}}": [
+            "prettier --ignore-path .eslintignore --parser json --write"
+        ],
+        "*.{css,scss}": [
+            "stylelint --ignore-path .eslintignore --fix"
+        ],
+        "*.{html,md,yml}": [
+            "prettier --ignore-path .eslintignore --single-quote --write"
+        ]
+    },
+    "dependencies": {
+        "@concordium/browser-wallet-api-helpers": "^0.2.0",
+        "@concordium/web-sdk": "^0.4.0",
+        "react": "^18.1.0",
+        "react-dom": "^18.1.0"
+    },
+    "devDependencies": {
+        "@craftamap/esbuild-plugin-html": "^0.4.0",
+        "@types/node": "^17.0.25",
+        "@types/react": "^18.0.9",
+        "@types/react-dom": "^18.0.5",
+        "cross-env": "^7.0.3",
+        "esbuild": "^0.14.42",
+        "esbuild-plugin-svgr": "^1.0.1",
+        "husky": "^7.0.4",
+        "lint-staged": "^12.3.8",
+        "live-server": "^1.2.2",
+        "prettier": "^2.6.2",
+        "ts-node": "^10.8.0",
+        "typescript": "^4.7.2"
+    },
+    "scripts": {
+        "lint": "eslint . --cache --max-warnings 0 --ext .ts,.tsx",
+        "build": "node --loader ts-node/esm ./esbuild.config.ts",
+        "watch": "cross-env WATCH=1 yarn build",
+        "start": "live-server ./dist",
+        "postinstall": "husky install"
+    }
+}
