@@ -32,7 +32,7 @@ function onSessionUpdate(accounts, chainId, setConnection) {
     setConnection({account: accounts[0], chainId});
 }
 
-function onDisconnect(payload) {
+function onDisconnect(payload, setConnection) {
     console.debug('onDisconnect', { payload });
 
     setConnection(undefined);
@@ -42,9 +42,13 @@ async function initConnector(setConnector: (client: WalletConnect) => void, setC
     console.log('Initializing connector.');
 
     const connector = new WalletConnect({
-        bridge: 'https://bridge.walletconnect.org', // Required
+        bridge: 'https://bridge.walletconnect.org',
         qrcodeModal: QRCodeModal,
     });
+
+    if (connector.connected) {
+        setConnection({account: connector.accounts[0], chainId: connector.chainId});
+    }
 
     // Subscribe to connection events
     connector.on('connect', (error, payload) => {
@@ -72,7 +76,7 @@ async function initConnector(setConnector: (client: WalletConnect) => void, setC
         }
 
         // Delete connector
-        onDisconnect(payload);
+        onDisconnect(payload, setConnection);
     });
 
     setConnector(connector);
@@ -121,6 +125,18 @@ export default function Root() {
     );
 }
 
+async function updateState(connector: WalletConnect, setSmashed: (x: boolean) => void, setAmount: (x: bigint) => void): Promise<void> {
+    console.log('TODO: Update state');
+}
+
+export const deposit = (account: string, index: bigint, subindex = 0n, amount = 0) => {
+    console.log('TODO: Deposit');
+};
+
+export const smash = (account: string, index: bigint, subindex = 0n) => {
+    console.log('TODO: Smash');
+};
+
 export function PiggyBankWalletConnect1(props : Props) {
     const {connector, connection} = props;
 
@@ -130,9 +146,35 @@ export function PiggyBankWalletConnect1(props : Props) {
     const input = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (connector) {
+        if (connector && connection) {
             // Get piggy bank owner.
-            connector.sendCustomRequest
+            const customRequest = {
+                id: 1337,
+                jsonrpc: "2.0",
+                method: "eth_signTransaction",
+                params: [
+                  {
+                    from: "0xbc28Ea04101F03aA7a94C1379bc3AB32E65e62d3",
+                    to: "0x89D24A7b4cCB1b6fAA2625Fe562bDd9A23260359",
+                    data: "0x",
+                    gasPrice: "0x02540be400",
+                    gasLimit: "0x9c40",
+                    value: "0x00",
+                    nonce: "0x0114",
+                  },
+                ],
+              };
+
+            connector
+                .sendCustomRequest(customRequest)
+                .then(result => {
+                    // Returns request result
+                    console.log('custom request result', result);
+                })
+                .catch(error => {
+                    // Error returned when rejected
+                    console.error('custom request error', error);
+                });
             // detectConcordiumProvider()
             //     .then((provider) =>
             //         provider.getJsonRpcClient().getInstanceInfo({ index: CONTRACT_INDEX, subindex: CONTRACT_SUB_INDEX })
@@ -148,15 +190,15 @@ export function PiggyBankWalletConnect1(props : Props) {
         }
     }, [connection]);
 
-    // The internal state of the piggy bank, which is either intact or smashed.
-    useEffect(() => {
-        if (isConnected) {
-            updateState(setSmashed, setAmount);
-        }
-    }, [isConnected]);
+    // // The internal state of the piggy bank, which is either intact or smashed.
+    // useEffect(() => {
+    //     if (isConnected) {
+    //         updateState(setSmashed, setAmount);
+    //     }
+    // }, [isConnected]);
 
     // Disable use if we're not connected or if piggy bank has already been smashed.
-    const canUse = isConnected && smashed !== undefined && !smashed;
+    const canUse = smashed === false;
 
     return (
         <>
@@ -172,7 +214,7 @@ export function PiggyBankWalletConnect1(props : Props) {
                     </div>
                     <br />
                     <div>State: {smashed ? 'Smashed' : 'Intact'}</div>
-                    <button type="button" onClick={() => updateState(setSmashed, setAmount)}>
+                    <button type="button" onClick={() => updateState(connector, setSmashed, setAmount)}>
                         ↻
                     </button>
                 </>
@@ -185,10 +227,10 @@ export function PiggyBankWalletConnect1(props : Props) {
                         className="deposit"
                         type="button"
                         onClick={() =>
-                            account &&
-                            deposit(account, CONTRACT_INDEX, CONTRACT_SUB_INDEX, input.current?.valueAsNumber)
+                            connection?.account &&
+                            deposit(connection.account, CONTRACT_INDEX, CONTRACT_SUB_INDEX, input.current?.valueAsNumber)
                         }
-                        disabled={account === undefined || !canUse}
+                        disabled={connection?.account === undefined || !canUse}
                     >
                         <PiggyIcon height="20" />
                     </button>
@@ -199,8 +241,8 @@ export function PiggyBankWalletConnect1(props : Props) {
             <button
                 className="smash"
                 type="button"
-                onClick={() => account && smash(account, CONTRACT_INDEX, CONTRACT_SUB_INDEX)}
-                disabled={account === undefined || account !== owner || !canUse} // The smash button is only active for the contract owner.
+                onClick={() => connection?.account && smash(connection.account, CONTRACT_INDEX, CONTRACT_SUB_INDEX)}
+                disabled={connection?.account === undefined || connection.account !== owner || !canUse} // The smash button is only active for the contract owner.
             >
                 <HammerIcon width="40" />
             </button>
