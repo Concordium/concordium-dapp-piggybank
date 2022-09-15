@@ -3,9 +3,8 @@ import Col from 'react-bootstrap/Col';
 import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 import './App.css';
-import Alert from 'react-bootstrap/Alert';
 import {AccountAddress, GtuAmount, JsonRpcClient} from "@concordium/web-sdk";
-import {ok, Result, ResultAsync} from "neverthrow";
+import {Result, ResultAsync} from "neverthrow";
 import Spinner from "react-bootstrap/Spinner";
 
 export interface State {
@@ -17,13 +16,10 @@ export interface State {
     methods: string[];
 }
 
-export type ContractResult = Result<State | undefined, string>;
-
 interface Props {
-    rpc: JsonRpcClient,
-    contract: ContractResult | undefined;
-    setContract: React.Dispatch<ContractResult | undefined>;
-    renderState: (c: State) => React.ReactNode;
+    children: React.ReactNode;
+    rpc: JsonRpcClient;
+    setContract: React.Dispatch<State | undefined>;
 }
 
 async function refresh(rpc: JsonRpcClient, index: bigint) {
@@ -45,23 +41,30 @@ async function refresh(rpc: JsonRpcClient, index: bigint) {
 const parseContractIndex = Result.fromThrowable(BigInt, () => "invalid contract index");
 
 export function Contract(props: Props) {
-    const {rpc, contract, setContract, renderState} = props;
+    const {children, rpc, setContract} = props;
     const [input, setInput] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [validationError, setValidationError] = useState<string>();
 
     useEffect(
         () => {
+            setContract(undefined);
             if (input) {
-                setContract(ok(undefined)); // trigger "loading" message
+                setIsLoading(true);
                 parseContractIndex(input)
                     .asyncAndThen(index =>
                         ResultAsync.fromPromise(
                             refresh(rpc, index),
-                            error => (error as Error).message
+                            e => (e as Error).message
                         )
                     )
-                    .then(setContract);
+                    .match(c => {
+                        setContract(c);
+                        setValidationError(undefined);
+                    }, setValidationError)
+                    .finally(() => setIsLoading(false));
             } else {
-                setContract(undefined);
+                setValidationError(undefined);
             }
         }, [input]
     )
@@ -78,10 +81,10 @@ export function Contract(props: Props) {
                                     placeholder="Address (index)"
                                     value={input}
                                     onChange={e => setInput(e.currentTarget.value)}
-                                    isInvalid={contract?.isErr()}
+                                    isInvalid={Boolean(validationError)}
                                 />
                                 <Form.Control.Feedback type="invalid">
-                                    {contract?.match(_ => "", error => error)}
+                                    {validationError}
                                 </Form.Control.Feedback>
                             </Col>
                         </Form.Group>
@@ -90,11 +93,8 @@ export function Contract(props: Props) {
             </Row>
             <Row>
                 <Col>
-                    {contract?.map(c => !c ? <Spinner animation="border" /> : (
-                        <Alert variant="secondary">
-                            {renderState(c)}
-                        </Alert>
-                    )).unwrapOr(undefined)}
+                    {isLoading && <Spinner animation="border" />}
+                    {children}
                 </Col>
             </Row>
         </>

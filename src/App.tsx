@@ -1,11 +1,12 @@
 import React, {useEffect, useMemo, useState} from 'react';
+import Alert from 'react-bootstrap/Alert';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Spinner from 'react-bootstrap/Spinner';
 
 import './App.css';
 import {Container} from "react-bootstrap";
-import {Contract, ContractResult, State as ContractState} from "./Contract"
+import {Contract, State as ContractState} from "./Contract"
 import {HttpProvider, JsonRpcClient, toBuffer} from "@concordium/web-sdk";
 import {JSON_RPC_URL} from "./config";
 import {err, ok, Result} from "neverthrow";
@@ -13,7 +14,7 @@ import {err, ok, Result} from "neverthrow";
 const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
 export default function App() {
-    const [contract, setContract] = useState<ContractResult>(); // TODO should really just be "contract" at this level - no need to know about validation errors etc.
+    const [contract, setContract] = useState<ContractState>();
 
     return (
         <Container>
@@ -24,12 +25,9 @@ export default function App() {
             </Row>
             <Row>
                 <Col>
-                    <Contract
-                        rpc={rpc}
-                        contract={contract}
-                        setContract={setContract}
-                        renderState={(contract) => (
-                            <>
+                    <Contract rpc={rpc} setContract={setContract}>
+                        {contract && (
+                            <Alert variant="secondary">
                                 <Row>
                                     <Col><h5>Generic state</h5></Col>
                                 </Row>
@@ -58,9 +56,9 @@ export default function App() {
                                         <PiggybankState rpc={rpc} contract={contract}/>
                                     </Col>
                                 </Row>
-                            </>
+                            </Alert>
                         )}
-                    />
+                    </Contract>
                 </Col>
             </Row>
         </Container>
@@ -105,9 +103,8 @@ function PiggybankState(props: { rpc: JsonRpcClient, contract: ContractState }) 
         refreshPiggybankState(rpc, contract, setPiggybankState).catch(console.error);
     }, [contract]);
 
-    return parsedState?.match(({smashed, amount}) => (
-            <strong>Piggybank is {smashed ? "smashed" : "not smashed"}.</strong>
-        ), err =>
-            <i>{err}</i>
-    ) || <Spinner animation="border" />;
+    return parsedState?.match(
+        ({smashed, amount}) => <strong>Piggybank is {smashed ? "smashed" : "not smashed"}.</strong>,
+        e => <i>{e}</i>
+    ) || <Spinner animation="border"/>;
 }
