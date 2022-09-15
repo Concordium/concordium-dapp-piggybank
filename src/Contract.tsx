@@ -5,9 +5,10 @@ import Row from 'react-bootstrap/Row';
 import './App.css';
 import Alert from 'react-bootstrap/Alert';
 import {AccountAddress, GtuAmount, JsonRpcClient} from "@concordium/web-sdk";
-import {err, ok, Result} from "neverthrow";
+import {err, ok, Result, ResultAsync} from "neverthrow";
 
 export interface State {
+    version: number;
     index: bigint;
     name: string;
     amount: GtuAmount;
@@ -24,35 +25,44 @@ interface Props {
     renderState: (c: State) => React.ReactNode;
 }
 
-async function refresh(rpc: JsonRpcClient, index: bigint, setContract: React.Dispatch<ContractResult | undefined>) {
+async function refresh(rpc: JsonRpcClient, index: bigint) {
     console.debug(`Looking up contract {contract}`);
     const info = await rpc.getInstanceInfo({index, subindex: BigInt(0)})
     if (!info) {
-        return setContract(err(`contract ${index} not found`));
+        throw new Error(`contract ${index} not found`);
     }
 
-    const {name, owner, amount, methods} = info;
+    const {version, name, owner, amount, methods} = info;
     const prefix = "init_";
     if (!name.startsWith(prefix)) {
-        return setContract(err(`name "${(name)}" doesn't start with "init_"`));
+        throw new Error(`name "${(name)}" doesn't start with "init_"`);
     }
     const trimmedName = name.substring(prefix.length);
-    return setContract(ok({index, name: trimmedName, amount, owner, methods}));
+    return {version, index, name: trimmedName, amount, owner, methods};
 }
+
+const parseContractIndex = Result.fromThrowable(BigInt, () => "invalid contract index");
 
 export function Contract(props: Props) {
     const {rpc, contract, setContract, renderState} = props;
-    const [contractInput, setContractInput] = useState("");
+    const [input, setInput] = useState("");
 
     useEffect(
         () => {
-            if (contractInput) {
-                setContract(ok(undefined));
-                refresh(rpc, BigInt(contractInput), setContract).catch(console.error);
+            if (input) {
+                setContract(ok(undefined)); // trigger "loading" message
+                parseContractIndex(input)
+                    .asyncAndThen(index =>
+                        ResultAsync.fromPromise(
+                            refresh(rpc, index),
+                            error => (error as Error).message
+                        )
+                    )
+                    .then(setContract);
             } else {
                 setContract(undefined);
             }
-        }, [contractInput]
+        }, [input]
     )
     return (
         <>
@@ -65,8 +75,8 @@ export function Contract(props: Props) {
                                 <Form.Control
                                     type="text"
                                     placeholder="Address (index)"
-                                    value={contractInput}
-                                    onChange={e => setContractInput(e.currentTarget.value)}
+                                    value={input}
+                                    onChange={e => setInput(e.currentTarget.value)}
                                 />
                             </Col>
                         </Form.Group>

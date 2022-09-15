@@ -1,18 +1,18 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 
 import './App.css';
 import {Container} from "react-bootstrap";
 import {Contract, ContractResult, State as ContractState} from "./Contract"
-import {HttpProvider, JsonRpcClient} from "@concordium/web-sdk";
+import {HttpProvider, JsonRpcClient, toBuffer} from "@concordium/web-sdk";
 import {JSON_RPC_URL} from "./config";
 import {err, ok, Result} from "neverthrow";
 
 const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
 export default function App() {
-    const [contract, setContract] = useState<ContractResult>();
+    const [contract, setContract] = useState<ContractResult>(); // TODO should really just be "contract" at this level - no need to know about validation errors etc.
 
     return (
         <Container>
@@ -57,7 +57,7 @@ export default function App() {
 }
 
 async function refreshPiggybankState(rpc: JsonRpcClient, contractState: ContractState, setPiggybankState: React.Dispatch<Result<string, string>>) {
-    const {name, index, methods} = contractState;
+    const {version, name, index, methods} = contractState;
 
     const expectedMethods = ["insert", "smash", "view"].map(m => `${name}.${m}`);
     if (!expectedMethods.every(methods.includes.bind(methods))) {
@@ -68,27 +68,35 @@ async function refreshPiggybankState(rpc: JsonRpcClient, contractState: Contract
     const method = `${name}.view`;
     const result = await rpc.invokeContract({contract: {index, subindex: BigInt(0)}, method})
     if (!result) {
-        return setPiggybankState(err(`failed invoking method "${method}" on contract "${index}"`));
+        return setPiggybankState(err(`invocation of method "${method}" on contract "${index}" returned no result`));
     }
     switch (result.tag) {
         case "failure":
-            return setPiggybankState(err(`invocation failed: ${result.reason}`))
+            return setPiggybankState(err(`invocation of method "${method}" on v${version} contract "${index}" returned error: ${JSON.stringify(result.reason)}`))
         case "success":
             return setPiggybankState(ok(result.returnValue || ""))
     }
 }
 
-function PiggybankState(props: {rpc: JsonRpcClient, contract: ContractState}) {
+function PiggybankState(props: { rpc: JsonRpcClient, contract: ContractState }) {
     const {rpc, contract} = props;
     const [piggybankState, setPiggybankState] = useState<Result<string, string>>();
+
+    const parsedState = useMemo(() =>
+            piggybankState?.map(rawState => {
+                const smashed = !!Number(rawState.substring(0, 2));
+                const amount = toBuffer(rawState.substring(2), 'hex').readBigUInt64LE(0) as bigint;
+                return {smashed, amount};
+            })
+        , [piggybankState]);
 
     useEffect(() => {
         refreshPiggybankState(rpc, contract, setPiggybankState).catch(console.error);
     }, [contract]);
 
-    return piggybankState?.match(state => (
-        <div>State: {state}</div>
-    ), err =>
-        <i>{err}</i>
+    return parsedState?.match(({smashed, amount}) => (
+            <strong>Piggybank is {smashed ? "smashed" : "not smashed"}.</strong>
+        ), err =>
+            <i>{err}</i>
     ) || <div>Loading...</div>;
 }
