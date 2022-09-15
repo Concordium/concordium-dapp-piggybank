@@ -5,7 +5,8 @@ import Row from 'react-bootstrap/Row';
 import './App.css';
 import Alert from 'react-bootstrap/Alert';
 import {AccountAddress, GtuAmount, JsonRpcClient} from "@concordium/web-sdk";
-import {err, ok, Result, ResultAsync} from "neverthrow";
+import {ok, Result, ResultAsync} from "neverthrow";
+import Spinner from "react-bootstrap/Spinner";
 
 export interface State {
     version: number;
@@ -68,33 +69,33 @@ export function Contract(props: Props) {
         <>
             <Row>
                 <Col>
-                    <Form>
+                    <Form noValidate>
                         <Form.Group as={Row} className="mb-3" controlId="contract">
-                            <Form.Label column sm={2}>Contract</Form.Label>
+                            <Form.Label column sm={2}>Contract index:</Form.Label>
                             <Col sm={10}>
                                 <Form.Control
                                     type="text"
                                     placeholder="Address (index)"
                                     value={input}
                                     onChange={e => setInput(e.currentTarget.value)}
+                                    isValid={contract?.map(Boolean).unwrapOr(false)}
+                                    isInvalid={contract?.isErr()}
                                 />
+                                <Form.Control.Feedback type="invalid">
+                                    {contract?.match(_ => "", error => error)}
+                                </Form.Control.Feedback>
                             </Col>
                         </Form.Group>
                     </Form>
                 </Col>
             </Row>
             <Row>
-                <Col sm={2}/>
-                <Col sm={10}>
-                    {contract?.match(c => !c ? "Loading..." : (
+                <Col>
+                    {contract?.map(c => !c ? <Spinner animation="border" /> : (
                         <Alert variant="secondary">
                             {renderState(c)}
                         </Alert>
-                    ), err => (
-                        <Alert variant="danger">
-                            <div style={{color: "red"}}>{err}</div>
-                        </Alert>
-                    ))}
+                    )).unwrapOr(undefined)}
                 </Col>
             </Row>
         </>

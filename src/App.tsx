@@ -1,6 +1,7 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
+import Spinner from 'react-bootstrap/Spinner';
 
 import './App.css';
 import {Container} from "react-bootstrap";
@@ -30,6 +31,9 @@ export default function App() {
                         renderState={(contract) => (
                             <>
                                 <Row>
+                                    <Col><h5>Generic state</h5></Col>
+                                </Row>
+                                <Row>
                                     <Col sm={2}>Name:</Col>
                                     <Col sm={10}><code>{contract.name}</code></Col>
                                 </Row>
@@ -46,7 +50,14 @@ export default function App() {
                                     <Col sm={10}>{contract.methods.join(", ")}</Col>
                                 </Row>
                                 <hr/>
-                                <PiggybankState rpc={rpc} contract={contract}/>
+                                <Row>
+                                    <Col><h5>Piggybank state</h5></Col>
+                                </Row>
+                                <Row>
+                                    <Col>
+                                        <PiggybankState rpc={rpc} contract={contract}/>
+                                    </Col>
+                                </Row>
                             </>
                         )}
                     />
@@ -61,7 +72,7 @@ async function refreshPiggybankState(rpc: JsonRpcClient, contractState: Contract
 
     const expectedMethods = ["insert", "smash", "view"].map(m => `${name}.${m}`);
     if (!expectedMethods.every(methods.includes.bind(methods))) {
-        return setPiggybankState(err(`contract "${index}" is not a piggy bank (it's lacking at least one of the methods ${expectedMethods.join(", ")})`))
+        return setPiggybankState(err(`contract "${name}" is not a piggy bank as it lacks at least one of the expected methods (${expectedMethods.join(", ")})`))
     }
 
     console.debug(`Loading Piggybank contract state.`);
@@ -98,5 +109,5 @@ function PiggybankState(props: { rpc: JsonRpcClient, contract: ContractState }) 
             <strong>Piggybank is {smashed ? "smashed" : "not smashed"}.</strong>
         ), err =>
             <i>{err}</i>
-    ) || <div>Loading...</div>;
+    ) || <Spinner animation="border" />;
 }
