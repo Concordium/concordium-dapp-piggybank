@@ -5,7 +5,7 @@ import Row from 'react-bootstrap/Row';
 import Spinner from 'react-bootstrap/Spinner';
 
 import './App.css';
-import {Container} from "react-bootstrap";
+import {Button, Container} from "react-bootstrap";
 import {Contract, State as ContractState} from "./Contract"
 import {HttpProvider, JsonRpcClient, toBuffer} from "@concordium/web-sdk";
 import {JSON_RPC_URL} from "./config";
@@ -15,7 +15,7 @@ const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
 export default function App() {
     const [contract, setContract] = useState<ContractState>();
-
+    const [wallet, setWallet] = useState<"browserwallet" | "walletconnect2">();
     return (
         <Container>
             <Row>
@@ -52,13 +52,36 @@ export default function App() {
                                     <Col><h5>Piggybank state</h5></Col>
                                 </Row>
                                 <Row>
-                                    <Col>
-                                        <PiggybankState rpc={rpc} contract={contract}/>
-                                    </Col>
+                                    <Col><PiggybankState rpc={rpc} contract={contract}/></Col>
                                 </Row>
                             </Alert>
                         )}
                     </Contract>
+                </Col>
+            </Row>
+            <Row>
+                <Col>
+                    <Button
+                        className="w-100"
+                        variant={wallet === "browserwallet" ? "dark" : "light"}
+                        onClick={() => setWallet("browserwallet")}
+                    >
+                        Browser Wallet
+                    </Button>
+                </Col>
+                <Col>
+                    <Button
+                        className="w-100"
+                        variant={wallet === "walletconnect2" ? "dark" : "light"}
+                        onClick={() => setWallet("walletconnect2")}
+                    >
+                        WalletConnect2
+                    </Button>
+                </Col>
+            </Row>
+            <Row>
+                <Col>
+                    {"<Piggybank...>"}
                 </Col>
             </Row>
         </Container>
@@ -104,7 +127,7 @@ function PiggybankState(props: { rpc: JsonRpcClient, contract: ContractState }) 
     }, [contract]);
 
     return parsedState?.match(
-        ({smashed, amount}) => <strong>Piggybank is {smashed ? "smashed" : "not smashed"}.</strong>,
+        ({smashed}) => <strong>Piggybank is {smashed ? "smashed" : "not smashed"}.</strong>,
         e => <i>{e}</i>
     ) || <Spinner animation="border"/>;
 }
