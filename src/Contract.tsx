@@ -78,7 +78,6 @@ export function Contract(props: Props) {
                                     placeholder="Address (index)"
                                     value={input}
                                     onChange={e => setInput(e.currentTarget.value)}
-                                    isValid={contract?.map(Boolean).unwrapOr(false)}
                                     isInvalid={contract?.isErr()}
                                 />
                                 <Form.Control.Feedback type="invalid">
