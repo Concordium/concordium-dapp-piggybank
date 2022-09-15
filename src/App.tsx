@@ -1,109 +1,94 @@
 import React, {useEffect, useState} from 'react';
 import Col from 'react-bootstrap/Col';
-import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 
 import './App.css';
 import {Container} from "react-bootstrap";
-import Alert from 'react-bootstrap/Alert';
-import {AccountAddress, GtuAmount, HttpProvider, isInstanceInfoV0, JsonRpcClient} from "@concordium/web-sdk";
+import {Contract, ContractResult, State as ContractState} from "./Contract"
+import {HttpProvider, JsonRpcClient} from "@concordium/web-sdk";
+import {JSON_RPC_URL} from "./config";
 import {err, ok, Result} from "neverthrow";
 
-const JSON_RPC_URL = "https://json-rpc.testnet.concordium.com";
 const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
-interface Contract {
-    name: string;
-    amount: GtuAmount;
-    owner: AccountAddress;
-}
-
-function App() {
-    const [contractInput, setContractInput] = useState("");
-    const [contract, setContract] = useState<Result<Contract, string>>();
-
-    useEffect(
-        () => {
-            setContract(undefined);
-            if (contractInput) {
-                console.debug(`Looking up contract {contract}`);
-                rpc.getInstanceInfo({index: BigInt(contractInput), subindex: BigInt(0)}).then((info) => {
-                    if (!info) {
-                        return setContract(err(`contract ${contractInput} not found`));
-                    }
-
-                    const {version, name, owner, amount} = info;
-                    const prefix = "init_";
-                    if (!name.startsWith(prefix)) {
-                        return setContract(err(`name "${(name)}" doesn't start with "init_"`));
-                    }
-                    const trimmedName = name.substring(prefix.length);
-                    // Check smart contract version - only v0 is supported.
-                    if (!isInstanceInfoV0(info)) {
-                        return setContract(err(`unsupported smart contract version: ${version}`));
-                    }
-                    return setContract(ok({name: trimmedName, amount, owner}));
-                });
-            }
-        }, [contractInput]
-    )
+export default function App() {
+    const [contract, setContract] = useState<ContractResult>();
 
     return (
         <Container>
             <Row>
-                <h1>Piggybank dApp</h1>
+                <Col>
+                    <h1>Piggybank dApp</h1>
+                </Col>
             </Row>
             <Row>
                 <Col>
-                    <Form>
-                        <Form.Group as={Row} className="mb-3" controlId="contract">
-                            <Form.Label column sm={2}>
-                                Contract
-                            </Form.Label>
-                            <Col sm={10}>
-                                <Form.Control type="text" placeholder="Address (index)" value={contractInput}
-                                              onChange={e => setContractInput(e.currentTarget.value)}/>
-                            </Col>
-                        </Form.Group>
-                    </Form>
+                    <Contract
+                        rpc={rpc}
+                        contract={contract}
+                        setContract={setContract}
+                        renderState={(contract) => (
+                            <>
+                                <Row>
+                                    <Col sm={2}>Name:</Col>
+                                    <Col sm={10}><code>{contract.name}</code></Col>
+                                </Row>
+                                <Row>
+                                    <Col sm={2}>Owner:</Col>
+                                    <Col sm={10}><code>{contract.owner.address}</code></Col>
+                                </Row>
+                                <Row>
+                                    <Col sm={2}>Balance:</Col>
+                                    <Col sm={10}>{contract.amount.microGtuAmount.toString()} μCCD</Col>
+                                </Row>
+                                <Row>
+                                    <Col sm={2}>Methods:</Col>
+                                    <Col sm={10}>{contract.methods.join(", ")}</Col>
+                                </Row>
+                                <hr/>
+                                <PiggybankState rpc={rpc} contract={contract}/>
+                            </>
+                        )}
+                    />
                 </Col>
             </Row>
-            <Row>
-                <Col sm={2}/>
-                <Col sm={10}>
-                    {contract?.match(c => (
-                        <Alert variant="secondary">
-                                <Row>
-                                    <Col sm={2}> Name: </Col>
-                                    <Col sm={10}>
-                                        <code>{c.name}</code>
-                                    </Col>
-                                </Row>
-                                <Row>
-                                    <Col sm={2}> Owner: </Col>
-                                    <Col sm={10}>
-                                        <code>{c.owner.address}</code>
-                                    </Col>
-                                </Row>
-                                <Row>
-                                    <Col sm={2}>
-                                        Balance:
-                                    </Col>
-                                    <Col sm={10}>
-                                        {c.amount.microGtuAmount.toString()} μCCD
-                                    </Col>
-                                </Row>
-                        </Alert>
-                        ), err =>
-                            <Alert variant="danger">
-                                <div style={{color: "red"}}>{err}</div>
-                            </Alert>
-                    )}
-                </Col>
-            </Row>
-            <hr/>
         </Container>
     );
 }
 
-export default App;
+async function refreshPiggybankState(rpc: JsonRpcClient, contractState: ContractState, setPiggybankState: React.Dispatch<Result<string, string>>) {
+    const {name, index, methods} = contractState;
+
+    const expectedMethods = ["insert", "smash", "view"].map(m => `${name}.${m}`);
+    if (!expectedMethods.every(methods.includes.bind(methods))) {
+        return setPiggybankState(err(`contract "${index}" is not a piggy bank (it's lacking at least one of the methods ${expectedMethods.join(", ")})`))
+    }
+
+    console.debug(`Loading Piggybank contract state.`);
+    const method = `${name}.view`;
+    const result = await rpc.invokeContract({contract: {index, subindex: BigInt(0)}, method})
+    if (!result) {
+        return setPiggybankState(err(`failed invoking method "${method}" on contract "${index}"`));
+    }
+    switch (result.tag) {
+        case "failure":
+            return setPiggybankState(err(`invocation failed: ${result.reason}`))
+        case "success":
+            return setPiggybankState(ok(result.returnValue || ""))
+    }
+}
+
+function PiggybankState(props: {rpc: JsonRpcClient, contract: ContractState}) {
+    const {rpc, contract} = props;
+    const [piggybankState, setPiggybankState] = useState<Result<string, string>>();
+
+    useEffect(() => {
+        refreshPiggybankState(rpc, contract, setPiggybankState).catch(console.error);
+    }, [contract]);
+
+    return piggybankState?.match(state => (
+        <div>State: {state}</div>
+    ), err =>
+        <i>{err}</i>
+    ) || <div>Loading...</div>;
+}
