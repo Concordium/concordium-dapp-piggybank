@@ -4,10 +4,10 @@ import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 import './App.css';
 import {AccountAddress, GtuAmount, JsonRpcClient} from "@concordium/web-sdk";
-import {Result, ResultAsync} from "neverthrow";
+import {err, ok, Result, ResultAsync} from "neverthrow";
 import Spinner from "react-bootstrap/Spinner";
 
-export interface State {
+export interface Info {
     version: number;
     index: bigint;
     name: string;
@@ -19,11 +19,11 @@ export interface State {
 interface Props {
     children: React.ReactNode;
     rpc: JsonRpcClient;
-    setContract: React.Dispatch<State | undefined>;
+    setContract: React.Dispatch<Info | undefined>;
 }
 
 async function refresh(rpc: JsonRpcClient, index: bigint) {
-    console.debug(`Looking up contract {contract}`);
+    console.debug(`Looking up info for contract {contract}`);
     const info = await rpc.getInstanceInfo({index, subindex: BigInt(0)})
     if (!info) {
         throw new Error(`contract ${index} not found`);
@@ -34,8 +34,14 @@ async function refresh(rpc: JsonRpcClient, index: bigint) {
     if (!name.startsWith(prefix)) {
         throw new Error(`name "${(name)}" doesn't start with "init_"`);
     }
-    const trimmedName = name.substring(prefix.length);
-    return {version, index, name: trimmedName, amount, owner, methods};
+    return {version, index, name: name.substring(prefix.length), amount, owner, methods};
+}
+
+function resultFromTruthy<T>(input: T): Result<T, undefined> {
+    if (input) {
+        return ok(input);
+    }
+    return err(undefined);
 }
 
 const parseContractIndex = Result.fromThrowable(BigInt, () => "invalid contract index");
@@ -48,24 +54,24 @@ export function Contract(props: Props) {
 
     useEffect(
         () => {
-            setContract(undefined);
-            if (input) {
-                setIsLoading(true);
-                parseContractIndex(input)
-                    .asyncAndThen(index =>
-                        ResultAsync.fromPromise(
-                            refresh(rpc, index),
-                            e => (e as Error).message
-                        )
+            setIsLoading(true);
+            resultFromTruthy(input)
+                .andThen(parseContractIndex)
+                .asyncAndThen(index =>
+                    ResultAsync.fromPromise(
+                        refresh(rpc, index),
+                        e => (e as Error).message
                     )
-                    .match(c => {
-                        setContract(c);
-                        setValidationError(undefined);
-                    }, setValidationError)
-                    .finally(() => setIsLoading(false));
-            } else {
-                setValidationError(undefined);
-            }
+                )
+                .match<[Info?, string?]>(
+                    c => [c, undefined],
+                    e => [undefined, e]
+                )
+                .then(([c, e]) => {
+                    setContract(c);
+                    setValidationError(e);
+                    setIsLoading(false);
+                });
         }, [input]
     )
     return (
@@ -93,7 +99,7 @@ export function Contract(props: Props) {
             </Row>
             <Row>
                 <Col>
-                    {isLoading && <Spinner animation="border" />}
+                    {isLoading && <Spinner animation="border"/>}
                     {children}
                 </Col>
             </Row>

@@ -6,22 +6,22 @@ import Spinner from 'react-bootstrap/Spinner';
 
 import './App.css';
 import {Button, Container} from "react-bootstrap";
-import {Contract, State as ContractState} from "./Contract"
+import {Contract, Info as ContractState} from "./Contract"
 import {HttpProvider, JsonRpcClient, toBuffer} from "@concordium/web-sdk";
 import {JSON_RPC_URL} from "./config";
 import {err, ok, Result} from "neverthrow";
 
 const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
+type Wallet = "browserwallet" | "walletconnect2";
+
 export default function App() {
     const [contract, setContract] = useState<ContractState>();
-    const [wallet, setWallet] = useState<"browserwallet" | "walletconnect2">();
+    const [wallet, setWallet] = useState<Wallet>();
     return (
         <Container>
             <Row>
-                <Col>
-                    <h1>Piggybank dApp</h1>
-                </Col>
+                <Col><h1>Piggybank dApp</h1></Col>
             </Row>
             <Row>
                 <Col>
@@ -96,7 +96,6 @@ async function refreshPiggybankState(rpc: JsonRpcClient, contractState: Contract
         return setPiggybankState(err(`contract "${name}" is not a piggy bank as it lacks at least one of the expected methods (${expectedMethods.join(", ")})`))
     }
 
-    console.debug(`Loading Piggybank contract state.`);
     const method = `${name}.view`;
     const result = await rpc.invokeContract({contract: {index, subindex: BigInt(0)}, method})
     if (!result) {
