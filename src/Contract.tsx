@@ -62,12 +62,10 @@ export function Contract(props: Props) {
                         refresh(rpc, index),
                         e => (e as Error).message
                     )
-                )
-                .match<[Info?, string?]>(
+                ).match<[Info?, string?]>(
                     c => [c, undefined],
                     e => [undefined, e]
-                )
-                .then(([c, e]) => {
+                ).then(([c, e]) => {
                     setContract(c);
                     setValidationError(e);
                     setIsLoading(false);

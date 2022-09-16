@@ -8,21 +8,131 @@ import './App.css';
 import {Button, Container} from "react-bootstrap";
 import {Contract, Info as ContractState} from "./Contract"
 import {HttpProvider, JsonRpcClient, toBuffer} from "@concordium/web-sdk";
-import {JSON_RPC_URL} from "./config";
-import {err, ok, Result} from "neverthrow";
+import {JSON_RPC_URL, WALLET_CONNECT_PROJECT_ID} from "./config";
+import {err, ok, Result, ResultAsync} from "neverthrow";
+import {detectConcordiumProvider, WalletApi} from "@concordium/browser-wallet-api-helpers";
+import SignClient from "@walletconnect/sign-client";
+import WalletConnect2 from "./WalletConnect2";
 
 const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
 type Wallet = "browserwallet" | "walletconnect2";
 
+// TODO Convert to class component?
 export default function App() {
-    const [contract, setContract] = useState<ContractState>();
+    // TODO Wrap 'setWallet' in function that disconnects the untoggled wallet.
     const [wallet, setWallet] = useState<Wallet>();
+    const [contract, setContract] = useState<ContractState>();
+
+    // Wallet clients: React only manages their existence, not their internal state.
+    const [browserwalletClient, setBrowserwalletClient] = useState<Result<WalletApi, string>>();
+    const [walletconnect2Client, setWalletconnect2Client] = useState<Result<SignClient, string>>();
+
+    // Attempt to initialize Browser Wallet Client.
+    useEffect(
+        () => {
+            ResultAsync.fromPromise(
+                detectConcordiumProvider(),
+                () => "browser wallet did not initialize in time" // promise rejects without message
+            )
+                .then(setBrowserwalletClient);
+        }, [])
+    // Attempt to initialize Wallet Connect Client.
+    useEffect(
+        () => {
+            ResultAsync.fromPromise(
+                SignClient.init({
+                    projectId: WALLET_CONNECT_PROJECT_ID,
+                    metadata: {
+                        name: "Piggybank",
+                        description: "Example dApp",
+                        url: "#",
+                        icons: ["https://walletconnect.com/walletconnect-logo.png"],
+                    },
+                }).then(client => {
+                        // Register event handlers.
+                        // TODO Make events actually update some state.
+                        client.on("session_event", (event) => {
+                            // Handle session events, such as "chainChanged", "accountsChanged", etc.
+                            console.debug('Wallet Connect event: session_event', {event});
+                        });
+                        client.on("session_update", ({topic, params}) => {
+                            const {namespaces} = params;
+                            const _session = client.session.get(topic);
+                            // Overwrite the `namespaces` of the existing session with the incoming one.
+                            const updatedSession = {..._session, namespaces};
+                            // Integrate the updated session state into your dapp state.
+                            console.info('Wallet Connect event: session_update', {updatedSession});
+                        });
+                        client.on("session_delete", () => {
+                            // Session was deleted -> reset the dapp state, clean up from user session, etc.
+                            console.info('Wallet Connect event: session_delete');
+                        });
+                        return client;
+                    }),
+                e => {
+                    console.debug('Wallet Connect: init error', e)
+                    return (e as Error).message;
+                },
+            ).then(setWalletconnect2Client);
+        },
+        []
+    )
     return (
         <Container>
             <Row>
                 <Col><h1>Piggybank dApp</h1></Col>
             </Row>
+            <hr/>
+            <Row>
+                <Col>
+                    <Button
+                        className="w-100"
+                        variant={wallet === "browserwallet" ? "dark" : "light"}
+                        onClick={() => setWallet("browserwallet")}
+                    >Use Browser Wallet</Button>
+                </Col>
+                <Col>
+                    <Button
+                        className="w-100"
+                        variant={wallet === "walletconnect2" ? "dark" : "light"}
+                        onClick={() => setWallet("walletconnect2")}
+                    >Use WalletConnect v2</Button>
+                </Col>
+            </Row>
+            <Row>
+                <Col>
+                    <>
+                        {wallet === "browserwallet" && (
+                            <>
+                                {!browserwalletClient && (
+                                    <Spinner animation="border"/>
+                                )}
+                                {browserwalletClient?.match(
+                                    () => undefined, // TODO render management component
+                                    e => (
+                                        <Alert variant="danger">Browser Wallet is not available: {e} (is the extension installed?)</Alert>
+                                    )
+                                )}
+                            </>
+                        )}
+                        {wallet === "walletconnect2" && (
+                            <>
+                                {!walletconnect2Client && (
+                                    <Spinner animation="border"/>
+                                )}
+                                {walletconnect2Client?.match(
+                                    c => <WalletConnect2 client={c}  />, // TODO render management component
+                                    e => (
+                                        <Alert variant="danger">Wallet Connect is not available: {e}.</Alert>
+                                    )
+                                )}
+                            </>
+                        )}
+                    </>
+                </Col>
+            </Row>
+            <hr/>
             <Row>
                 <Col>
                     <Contract rpc={rpc} setContract={setContract}>
@@ -47,6 +157,10 @@ export default function App() {
                                     <Col sm={2}>Methods:</Col>
                                     <Col sm={10}>{contract.methods.join(", ")}</Col>
                                 </Row>
+                                <Row>
+                                    <Col sm={2}>Platform:</Col>
+                                    <Col sm={10}>v{contract.version}</Col>
+                                </Row>
                                 <hr/>
                                 <Row>
                                     <Col><h5>Piggybank state</h5></Col>
@@ -57,26 +171,6 @@ export default function App() {
                             </Alert>
                         )}
                     </Contract>
-                </Col>
-            </Row>
-            <Row>
-                <Col>
-                    <Button
-                        className="w-100"
-                        variant={wallet === "browserwallet" ? "dark" : "light"}
-                        onClick={() => setWallet("browserwallet")}
-                    >
-                        Browser Wallet
-                    </Button>
-                </Col>
-                <Col>
-                    <Button
-                        className="w-100"
-                        variant={wallet === "walletconnect2" ? "dark" : "light"}
-                        onClick={() => setWallet("walletconnect2")}
-                    >
-                        WalletConnect2
-                    </Button>
                 </Col>
             </Row>
             <Row>
