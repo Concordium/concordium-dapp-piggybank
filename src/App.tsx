@@ -13,6 +13,8 @@ import {err, ok, Result, ResultAsync} from "neverthrow";
 import {detectConcordiumProvider, WalletApi} from "@concordium/browser-wallet-api-helpers";
 import SignClient from "@walletconnect/sign-client";
 import WalletConnect2 from "./WalletConnect2";
+import {SessionTypes} from "@walletconnect/types";
+import BrowserWallet from "./BrowserWallet";
 
 const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
@@ -28,11 +30,27 @@ export default function App() {
     const [browserwalletClient, setBrowserwalletClient] = useState<Result<WalletApi, string>>();
     const [walletconnect2Client, setWalletconnect2Client] = useState<Result<SignClient, string>>();
 
+    // Wallet state.
+    const [browserwalletConnectedAccount, setBrowserwalletConnectedAccount] = useState<string>();
+    const [walletconnect2ConnectedSession, setWalletconnect2ConnectedSession] = useState<SessionTypes.Struct>();
+
     // Attempt to initialize Browser Wallet Client.
     useEffect(
         () => {
             ResultAsync.fromPromise(
-                detectConcordiumProvider(),
+                detectConcordiumProvider()
+                    .then(client => {
+                        // Listen for relevant events from the wallet.
+                        client.on('accountChanged', setBrowserwalletConnectedAccount);
+                        client.on('accountDisconnected', () =>
+                            client.getMostRecentlySelectedAccount()
+                                .then(setBrowserwalletConnectedAccount)
+                        );
+                        client.on('chainChanged', (chain) => console.log(chain));
+                        // Check if you are already connected
+                        client.getMostRecentlySelectedAccount().then(setBrowserwalletConnectedAccount);
+                        return client;
+                    }),
                 () => "browser wallet did not initialize in time" // promise rejects without message
             )
                 .then(setBrowserwalletClient);
@@ -50,26 +68,26 @@ export default function App() {
                         icons: ["https://walletconnect.com/walletconnect-logo.png"],
                     },
                 }).then(client => {
-                        // Register event handlers.
-                        // TODO Make events actually update some state.
-                        client.on("session_event", (event) => {
-                            // Handle session events, such as "chainChanged", "accountsChanged", etc.
-                            console.debug('Wallet Connect event: session_event', {event});
-                        });
-                        client.on("session_update", ({topic, params}) => {
-                            const {namespaces} = params;
-                            const _session = client.session.get(topic);
-                            // Overwrite the `namespaces` of the existing session with the incoming one.
-                            const updatedSession = {..._session, namespaces};
-                            // Integrate the updated session state into your dapp state.
-                            console.info('Wallet Connect event: session_update', {updatedSession});
-                        });
-                        client.on("session_delete", () => {
-                            // Session was deleted -> reset the dapp state, clean up from user session, etc.
-                            console.info('Wallet Connect event: session_delete');
-                        });
-                        return client;
-                    }),
+                    // Register event handlers.
+                    // TODO Make events actually update some state.
+                    client.on("session_event", (event) => {
+                        // Handle session events, such as "chainChanged", "accountsChanged", etc.
+                        console.debug('Wallet Connect event: session_event', {event});
+                    });
+                    client.on("session_update", ({topic, params}) => {
+                        const {namespaces} = params;
+                        const _session = client.session.get(topic);
+                        // Overwrite the `namespaces` of the existing session with the incoming one.
+                        const updatedSession = {..._session, namespaces};
+                        // Integrate the updated session state into your dapp state.
+                        console.info('Wallet Connect event: session_update', {updatedSession});
+                    });
+                    client.on("session_delete", () => {
+                        // Session was deleted -> reset the dapp state, clean up from user session, etc.
+                        console.info('Wallet Connect event: session_delete');
+                    });
+                    return client;
+                }),
                 e => {
                     console.debug('Wallet Connect: init error', e)
                     return (e as Error).message;
@@ -84,19 +102,19 @@ export default function App() {
                 <Col><h1>Piggybank dApp</h1></Col>
             </Row>
             <hr/>
-            <Row>
+            <Row className="mb-3">
                 <Col>
                     <Button
                         className="w-100"
                         variant={wallet === "browserwallet" ? "dark" : "light"}
-                        onClick={() => setWallet("browserwallet")}
+                        onClick={() => wallet === "browserwallet" ? setWallet(undefined) : setWallet("browserwallet")}
                     >Use Browser Wallet</Button>
                 </Col>
                 <Col>
                     <Button
                         className="w-100"
                         variant={wallet === "walletconnect2" ? "dark" : "light"}
-                        onClick={() => setWallet("walletconnect2")}
+                        onClick={() => wallet === "walletconnect2" ? setWallet(undefined) : setWallet("walletconnect2")}
                     >Use WalletConnect v2</Button>
                 </Col>
             </Row>
@@ -109,9 +127,14 @@ export default function App() {
                                     <Spinner animation="border"/>
                                 )}
                                 {browserwalletClient?.match(
-                                    () => undefined, // TODO render management component
+                                    c => <BrowserWallet
+                                        client={c}
+                                        connectedAccount={browserwalletConnectedAccount}
+                                        setConnectedAccount={setBrowserwalletConnectedAccount}
+                                    />,
                                     e => (
-                                        <Alert variant="danger">Browser Wallet is not available: {e} (is the extension installed?)</Alert>
+                                        <Alert variant="danger">Browser Wallet is not available: {e} (is the extension
+                                            installed?)</Alert>
                                     )
                                 )}
                             </>
@@ -122,7 +145,11 @@ export default function App() {
                                     <Spinner animation="border"/>
                                 )}
                                 {walletconnect2Client?.match(
-                                    c => <WalletConnect2 client={c}  />, // TODO render management component
+                                    c => <WalletConnect2
+                                        client={c}
+                                        connectedSession={walletconnect2ConnectedSession}
+                                        setConnectedSession={setWalletconnect2ConnectedSession}
+                                    />,
                                     e => (
                                         <Alert variant="danger">Wallet Connect is not available: {e}.</Alert>
                                     )

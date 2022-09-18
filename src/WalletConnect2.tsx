@@ -1,5 +1,4 @@
 import SignClient from "@walletconnect/sign-client";
-import {useState} from "react";
 import {Alert, Button} from "react-bootstrap";
 import QRCodeModal from "@walletconnect/qrcode-modal";
 import {SessionTypes} from "@walletconnect/types";
@@ -49,11 +48,12 @@ async function disconnect(client: SignClient, setConnectedSession: (session: Ses
 
 interface Props {
     client: SignClient;
+    connectedSession?: SessionTypes.Struct;
+    setConnectedSession: (session: SessionTypes.Struct|undefined) => void;
 }
 
 export default function WalletConnect2(props: Props) {
-    const {client} = props;
-    const [connectedSession, setConnectedSession] = useState<SessionTypes.Struct>();
+    const {client, connectedSession, setConnectedSession} = props;
 
     return (
         <>
