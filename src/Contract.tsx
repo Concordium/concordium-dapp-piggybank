@@ -6,6 +6,7 @@ import './App.css';
 import {AccountAddress, GtuAmount, JsonRpcClient} from "@concordium/web-sdk";
 import {err, ok, Result, ResultAsync} from "neverthrow";
 import Spinner from "react-bootstrap/Spinner";
+import {DEFAULT_CONTRACT_INPUT} from "./config";
 
 export interface Info {
     version: number;
@@ -48,7 +49,7 @@ const parseContractIndex = Result.fromThrowable(BigInt, () => "invalid contract 
 
 export function Contract(props: Props) {
     const {children, rpc, setContract} = props;
-    const [input, setInput] = useState("");
+    const [input, setInput] = useState(DEFAULT_CONTRACT_INPUT);
     const [isLoading, setIsLoading] = useState(false);
     const [validationError, setValidationError] = useState<string>();
 
