@@ -6,17 +6,12 @@ import {SessionTypes} from "@walletconnect/types";
 async function connect(client: SignClient, setConnectedSession: (session: SessionTypes.Struct) => void) {
     try {
         const {uri, approval} = await client.connect({
-            // TODO From documentation. Replace with something something Concordium.
             requiredNamespaces: {
-                eip155: {
+                concordium: {
                     methods: [
-                        'eth_sendTransaction',
-                        'eth_signTransaction',
-                        'eth_sign',
-                        'personal_sign',
-                        'eth_signTypedData',
+                        'signTransaction',
                     ],
-                    chains: ['eip155:1'],
+                    chains: ['concordium:mainnet'],
                     events: ['chainChanged', 'accountsChanged'],
                 },
             },
