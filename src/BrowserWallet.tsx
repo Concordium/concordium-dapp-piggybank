@@ -1,4 +1,4 @@
-import {Alert} from "react-bootstrap";
+import {Alert, Button} from "react-bootstrap";
 import {WalletApi} from "@concordium/browser-wallet-api-helpers";
 
 interface Props {
@@ -34,9 +34,9 @@ export default function BrowserWallet(props: Props) {
             {!connectedAccount && (
                 <>
                     <p>No wallet connection</p>
-                    <button onClick={() => connect(client, setConnectedAccount).catch(console.error)}>
+                    <Button onClick={() => connect(client, setConnectedAccount).catch(console.error)}>
                         Connect
-                    </button>
+                    </Button>
                 </>
             )}
         </>
