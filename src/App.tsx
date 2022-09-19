@@ -41,12 +41,17 @@ export default function App() {
                 detectConcordiumProvider()
                     .then(client => {
                         // Listen for relevant events from the wallet.
-                        client.on('accountChanged', setBrowserwalletConnectedAccount);
-                        client.on('accountDisconnected', () =>
-                            client.getMostRecentlySelectedAccount()
-                                .then(setBrowserwalletConnectedAccount)
-                        );
-                        client.on('chainChanged', (chain) => console.log(chain));
+                        client.on('accountChanged', account => {
+                            console.debug('browserwallet event: accountChange', {account});
+                            setBrowserwalletConnectedAccount(account);
+                        });
+                        client.on('accountDisconnected', () => {
+                            console.debug('browserwallet event: accountDisconnected');
+                            client.getMostRecentlySelectedAccount().then(setBrowserwalletConnectedAccount);
+                        });
+                        client.on('chainChanged', (chain) => {
+                            console.debug('browserwallet event: chainChanged', {chain});
+                        });
                         // Check if you are already connected
                         client.getMostRecentlySelectedAccount().then(setBrowserwalletConnectedAccount);
                         return client;
@@ -54,7 +59,7 @@ export default function App() {
                 () => "browser wallet did not initialize in time" // promise rejects without message
             )
                 .then(setBrowserwalletClient);
-        }, [])
+        }, []);
     // Attempt to initialize Wallet Connect Client.
     useEffect(
         () => {
@@ -80,11 +85,11 @@ export default function App() {
                         // Overwrite the `namespaces` of the existing session with the incoming one.
                         const updatedSession = {..._session, namespaces};
                         // Integrate the updated session state into your dapp state.
-                        console.info('Wallet Connect event: session_update', {updatedSession});
+                        console.debug('Wallet Connect event: session_update', {updatedSession});
                     });
                     client.on("session_delete", () => {
                         // Session was deleted -> reset the dapp state, clean up from user session, etc.
-                        console.info('Wallet Connect event: session_delete');
+                        console.debug('Wallet Connect event: session_delete');
                     });
                     return client;
                 }),
@@ -95,7 +100,7 @@ export default function App() {
             ).then(setWalletconnect2Client);
         },
         []
-    )
+    );
     return (
         <Container>
             <Row>
@@ -133,8 +138,9 @@ export default function App() {
                                         setConnectedAccount={setBrowserwalletConnectedAccount}
                                     />,
                                     e => (
-                                        <Alert variant="danger">Browser Wallet is not available: {e} (is the extension
-                                            installed?)</Alert>
+                                        <Alert variant="danger">
+                                            Browser Wallet is not available: {e} (is the extension installed?).
+                                        </Alert>
                                     )
                                 )}
                             </>
@@ -214,7 +220,7 @@ async function refreshPiggybankState(rpc: JsonRpcClient, contractState: Contract
 
     const expectedMethods = ["insert", "smash", "view"].map(m => `${name}.${m}`);
     if (!expectedMethods.every(methods.includes.bind(methods))) {
-        return setPiggybankState(err(`contract "${name}" is not a piggy bank as it lacks at least one of the expected methods (${expectedMethods.join(", ")})`))
+        return setPiggybankState(err(`contract "${name}" is not a piggy bank as it lacks at least one of the expected methods (${expectedMethods.join(", ")})`));
     }
 
     const method = `${name}.view`;
@@ -224,9 +230,9 @@ async function refreshPiggybankState(rpc: JsonRpcClient, contractState: Contract
     }
     switch (result.tag) {
         case "failure":
-            return setPiggybankState(err(`invocation of method "${method}" on v${version} contract "${index}" returned error: ${JSON.stringify(result.reason)}`))
+            return setPiggybankState(err(`invocation of method "${method}" on v${version} contract "${index}" returned error: ${JSON.stringify(result.reason)}`));
         case "success":
-            return setPiggybankState(ok(result.returnValue || ""))
+            return setPiggybankState(ok(result.returnValue || ""));
     }
 }
 
@@ -244,7 +250,7 @@ function PiggybankState(props: { rpc: JsonRpcClient, contract: ContractState }) 
 
     useEffect(() => {
         refreshPiggybankState(rpc, contract, setPiggybankState).catch(console.error);
-    }, [contract]);
+    }, [rpc, contract]);
 
     return parsedState?.match(
         ({smashed}) => <strong>Piggybank is {smashed ? "smashed" : "not smashed"}.</strong>,
