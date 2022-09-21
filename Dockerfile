@@ -7,5 +7,5 @@ RUN yarn install
 COPY . .
 RUN yarn build
 
-FROM httpd:2
+FROM httpd:2-alpine
 COPY --from=build /build/build /usr/local/apache2/htdocs
