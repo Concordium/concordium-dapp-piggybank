@@ -7,11 +7,11 @@ async function connect(client: SignClient, setConnectedSession: (session: Sessio
     try {
         const {uri, approval} = await client.connect({
             requiredNamespaces: {
-                concordium: {
+                ccd: {
                     methods: [
                         'signTransaction',
                     ],
-                    chains: ['concordium:mainnet'],
+                    chains: ['ccd:mainnet'],
                     events: ['chainChanged', 'accountsChanged'],
                 },
             },
