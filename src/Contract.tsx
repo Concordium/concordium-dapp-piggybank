@@ -4,9 +4,10 @@ import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 import './App.css';
 import {AccountAddress, GtuAmount, JsonRpcClient} from "@concordium/web-sdk";
-import {err, ok, Result, ResultAsync} from "neverthrow";
+import {Result, ResultAsync} from "neverthrow";
 import Spinner from "react-bootstrap/Spinner";
 import {DEFAULT_CONTRACT_INPUT} from "./config";
+import {resultFromTruthy} from "./util";
 
 export interface Info {
     version: number;
@@ -38,13 +39,6 @@ async function refresh(rpc: JsonRpcClient, index: bigint) {
     return {version, index, name: name.substring(prefix.length), amount, owner, methods};
 }
 
-function resultFromTruthy<T>(input: T): Result<T, undefined> {
-    if (input) {
-        return ok(input);
-    }
-    return err(undefined);
-}
-
 const parseContractIndex = Result.fromThrowable(BigInt, () => "invalid contract index");
 
 export function Contract(props: Props) {
@@ -64,36 +58,34 @@ export function Contract(props: Props) {
                         e => (e as Error).message
                     )
                 ).match<[Info?, string?]>(
-                    c => [c, undefined],
-                    e => [undefined, e]
-                ).then(([c, e]) => {
-                    setContract(c);
-                    setValidationError(e);
-                    setIsLoading(false);
-                });
+                c => [c, undefined],
+                e => [undefined, e]
+            ).then(([c, e]) => {
+                setContract(c);
+                setValidationError(e);
+                setIsLoading(false);
+            });
         }, [input]
     )
     return (
         <>
             <Row>
                 <Col>
-                    <Form noValidate>
-                        <Form.Group as={Row} className="mb-3" controlId="contract">
-                            <Form.Label column sm={2}>Contract index:</Form.Label>
-                            <Col sm={10}>
-                                <Form.Control
-                                    type="text"
-                                    placeholder="Address (index)"
-                                    value={input}
-                                    onChange={e => setInput(e.currentTarget.value)}
-                                    isInvalid={Boolean(validationError)}
-                                />
-                                <Form.Control.Feedback type="invalid">
-                                    {validationError}
-                                </Form.Control.Feedback>
-                            </Col>
-                        </Form.Group>
-                    </Form>
+                    <Form.Group as={Row} className="mb-3" controlId="contract">
+                        <Form.Label column sm={2}>Contract index:</Form.Label>
+                        <Col sm={10}>
+                            <Form.Control
+                                type="text"
+                                placeholder="Address (index)"
+                                value={input}
+                                onChange={e => setInput(e.currentTarget.value)}
+                                isInvalid={Boolean(validationError)}
+                            />
+                            <Form.Control.Feedback type="invalid">
+                                {validationError}
+                            </Form.Control.Feedback>
+                        </Col>
+                    </Form.Group>
                 </Col>
             </Row>
             <Row>

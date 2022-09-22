@@ -230,7 +230,15 @@ export default function App() {
             </Row>
             <Row>
                 <Col>
-                    <Piggybank/>
+                    {!piggybankState && <Spinner animation="border"/>}
+                    {piggybankState?.match(
+                        state => <Piggybank
+                            state={state}
+                            submitDeposit={amount => console.log(`TODO: Submit deposit '${amount}'!`)}
+                            submitSmash={() => console.log(`TODO: Smash!`)}
+                        />,
+                        e => <i>{e}</i>
+                    )}
                 </Col>
             </Row>
         </Container>

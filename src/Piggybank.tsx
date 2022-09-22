@@ -1,7 +1,10 @@
 import {JsonRpcClient, toBuffer} from "@concordium/web-sdk";
-import {err, ok} from "neverthrow";
+import {err, ok, Result} from "neverthrow";
 import {Info} from "./Contract";
 import {decodePiggybankState} from "./buffer";
+import {useCallback, useState} from "react";
+import {resultFromTruthy} from "./util";
+import {Button, Form} from "react-bootstrap";
 
 export async function refreshPiggybankState(rpc: JsonRpcClient, contractInfo: Info) {
     const {version, name, index, methods} = contractInfo;
@@ -27,12 +30,49 @@ export async function refreshPiggybankState(rpc: JsonRpcClient, contractInfo: In
 }
 
 export interface State {
-    smashed: boolean,
-    amount: string,
+    smashed: boolean;
+    amount: string;
 }
 
-export default function Piggybank() {
+interface Props {
+    state: State;
+    submitDeposit: (amount: bigint) => void;
+    submitSmash: () => void;
+}
+
+const parseAmount = Result.fromThrowable(BigInt, () => "invalid amount");
+
+export default function Piggybank(props: Props) {
+    const {state, submitDeposit, submitSmash} = props;
+    const [depositInput, setDepositInput] = useState<string>("");
+    const [validationError, setValidationError] = useState<string>();
+    const handleSubmitDeposit = useCallback(
+        () => {
+            resultFromTruthy(depositInput)
+                .andThen(parseAmount)
+                .match(submitDeposit, setValidationError);
+        },
+        [depositInput],
+    );
     return (
-        <div>TODO: Piggybank component!</div>
+        <>
+            <h1>Piggybank</h1>
+            {state.smashed
+                ? <p>Already smashed.</p>
+                : <p>
+                    <Button onClick={submitSmash}>Smash!</Button>
+                </p>}
+            <Form.Control
+                type="text"
+                placeholder="Deposit amount."
+                value={depositInput}
+                onChange={e => setDepositInput(e.target.value)}
+                isInvalid={Boolean(validationError)}
+            />
+            <Form.Control.Feedback type="invalid">
+                {validationError}
+            </Form.Control.Feedback>
+            <Button onClick={handleSubmitDeposit}>Deposit</Button>
+        </>
     );
 }
