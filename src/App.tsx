@@ -15,6 +15,7 @@ import SignClient from "@walletconnect/sign-client";
 import WalletConnect2 from "./WalletConnect2";
 import {SessionTypes} from "@walletconnect/types";
 import BrowserWallet from "./BrowserWallet";
+import {decodeByte} from "./buffer";
 
 const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
@@ -242,9 +243,9 @@ function PiggybankState(props: { rpc: JsonRpcClient, contract: ContractState }) 
 
     const parsedState = useMemo(() =>
             piggybankState?.map(rawState => {
-                const smashed = !!Number(rawState.substring(0, 2));
-                const amount = toBuffer(rawState.substring(2), 'hex').readBigUInt64LE(0) as bigint;
-                return {smashed, amount};
+                const buffer = toBuffer(rawState, 'hex');
+                const [state] = decodeByte(buffer, 0);
+                return {smashed: Boolean(state), amount:(Number(contract.amount.microGtuAmount) / 1e6).toFixed(6)};
             })
         , [piggybankState]);
 
@@ -253,7 +254,7 @@ function PiggybankState(props: { rpc: JsonRpcClient, contract: ContractState }) 
     }, [rpc, contract]);
 
     return parsedState?.match(
-        ({smashed}) => <strong>Piggybank is {smashed ? "smashed" : "not smashed"}.</strong>,
+        ({smashed, amount}) => <strong>Piggybank has {amount} CCD in it and is {smashed ? "smashed" : "not smashed"}.</strong>,
         e => <i>{e}</i>
     ) || <Spinner animation="border"/>;
 }
