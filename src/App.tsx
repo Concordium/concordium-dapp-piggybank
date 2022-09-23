@@ -8,15 +8,14 @@ import './App.css';
 import {Button, Container} from "react-bootstrap";
 import {Contract, Info} from "./Contract"
 import {GtuAmount, HttpProvider, JsonRpcClient} from "@concordium/web-sdk";
-import {JSON_RPC_URL, WALLET_CONNECT_PROJECT_ID} from "./config";
+import {CHAIN_ID, JSON_RPC_URL, WALLET_CONNECT_PROJECT_ID, ZERO_AMOUNT} from "./config";
 import {Result, ResultAsync} from "neverthrow";
 import {detectConcordiumProvider, WalletApi} from "@concordium/browser-wallet-api-helpers";
 import SignClient from "@walletconnect/sign-client";
-import WalletConnect2 from "./WalletConnect2";
+import WalletConnect2, {signAndSendTransaction, trySignSend} from "./WalletConnect2";
 import {SessionTypes} from "@walletconnect/types";
-import BrowserWallet, {deposit, smash} from "./BrowserWallet";
+import BrowserWallet, {deposit, trySendTransaction, smash, wrapPromise} from "./BrowserWallet";
 import Piggybank, {refreshPiggybankState, State} from "./Piggybank";
-import {resultFromTruthy} from "./util";
 
 const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
@@ -36,7 +35,7 @@ export default function App() {
                     .then(setPiggybankState)
                     .catch(console.error);
             }
-        }, [rpc, contract],
+        }, [contract],
     );
 
     // Wallet clients: React only manages their existence, not their internal state.
@@ -117,40 +116,73 @@ export default function App() {
     const handleSubmitDeposit = useCallback(
         (amount: bigint) => {
             if (wallet === "browserwallet") {
-                Result.combine<[Result<WalletApi, string | undefined>, Result<string, string | undefined>, Result<Info, string | undefined>]>([
-                    resultFromTruthy(browserwalletClient, "not initialized").andThen(r => r),
-                    resultFromTruthy(browserwalletConnectedAccount, "no account connected"),
-                    resultFromTruthy(contract, "no contract"),
-                ]).match(
-                    ([client, account, contract]) => {
-                        deposit(client, new GtuAmount(amount), account, contract).catch(console.error);
-                    },
-                    e => console.log(`cannot send transaction: ${e}`),
-                );
-            } else if (wallet === "walletconnect2" && walletconnect2ConnectedSession) {
-                console.log("TODO: Implement submit deposit");
+                trySendTransaction(
+                    browserwalletClient,
+                    browserwalletConnectedAccount,
+                    contract,
+                    wrapPromise(
+                        (client, account, contract) =>
+                            deposit(client, new GtuAmount(amount), account, contract),
+                    ),
+                )
+            } else if (wallet === "walletconnect2" && browserwalletClient) {
+                // TODO Don't depend on browser wallet client.
+                console.debug("walletconnect: attempting deposit!");
+                trySignSend(
+                    walletconnect2Client,
+                    walletconnect2ConnectedSession,
+                    contract,
+                    (client, session, contract) =>
+                        browserwalletClient.asyncMap(rpcClient =>
+                            signAndSendTransaction(
+                                client,
+                                session,
+                                rpcClient.getJsonRpcClient(),
+                                CHAIN_ID,
+                                ZERO_AMOUNT,
+                                session.topic,
+                                contract,
+                                "deposit",
+                            )
+                        ),
+                )
             }
         },
-        [wallet, browserwalletClient, walletconnect2ConnectedSession, browserwalletConnectedAccount, walletconnect2ConnectedSession],
+        [wallet, browserwalletClient, walletconnect2Client, browserwalletConnectedAccount, walletconnect2ConnectedSession, contract],
     );
     const handleSubmitSmash = useCallback(
         () => {
             if (wallet === "browserwallet") {
-                Result.combine<[Result<WalletApi, string>, Result<string, string>, Result<Info, string>]>([
-                    resultFromTruthy(browserwalletClient, "not initialized").andThen(r => r),
-                    resultFromTruthy(browserwalletConnectedAccount, "no account connected"),
-                    resultFromTruthy(contract, "no contract"),
-                ]).match(
-                    ([client, account, contract]) => {
-                        smash(client, account, contract).catch(console.error);
-                    },
-                    e => console.log(`cannot send transaction: ${e}`),
+                trySendTransaction(
+                    browserwalletClient,
+                    browserwalletConnectedAccount,
+                    contract,
+                    wrapPromise(smash),
+                )
+            } else if (wallet === "walletconnect2" && browserwalletClient) {
+                // TODO Don't depend on browser wallet client.
+                console.debug("walletconnect: attempting smash!");
+                trySignSend(
+                    walletconnect2Client,
+                    walletconnect2ConnectedSession,
+                    contract,
+                    (client, session, contract) =>
+                        browserwalletClient.asyncMap(rpcClient =>
+                            signAndSendTransaction(
+                                client,
+                                session,
+                                rpcClient.getJsonRpcClient(),
+                                CHAIN_ID,
+                                ZERO_AMOUNT,
+                                session.topic,
+                                contract,
+                                "smash",
+                            )
+                        ),
                 );
-            } else if (wallet === "walletconnect2") {
-                console.log("TODO: Implement submit smash");
             }
         },
-        [wallet, browserwalletClient, walletconnect2ConnectedSession, browserwalletConnectedAccount, walletconnect2ConnectedSession],
+        [wallet, browserwalletClient, browserwalletConnectedAccount, walletconnect2Client, walletconnect2ConnectedSession, contract],
     );
     return (
         <Container>

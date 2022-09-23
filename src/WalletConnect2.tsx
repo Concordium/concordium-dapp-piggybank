@@ -2,6 +2,16 @@ import SignClient from "@walletconnect/sign-client";
 import {Alert, Button} from "react-bootstrap";
 import QRCodeModal from "@walletconnect/qrcode-modal";
 import {SessionTypes} from "@walletconnect/types";
+import {Result, ResultAsync} from "neverthrow";
+import {Info} from "./Contract";
+import {contractUpdatePayload, resultFromTruthy} from "./util";
+import {
+    AccountAddress,
+    AccountTransaction,
+    AccountTransactionSignature, AccountTransactionType,
+    getAccountTransactionHash, GtuAmount,
+    JsonRpcClient, TransactionExpiry
+} from "@concordium/web-sdk";
 
 async function connect(client: SignClient, setConnectedSession: (session: SessionTypes.Struct) => void) {
     try {
@@ -34,17 +44,64 @@ async function connect(client: SignClient, setConnectedSession: (session: Sessio
     }
 }
 
-async function disconnect(client: SignClient, setConnectedSession: (session: SessionTypes.Struct | undefined) => void) {
-    const topic = "something topic...";
+async function disconnect(client: SignClient, session: SessionTypes.Struct, setConnectedSession: (session: SessionTypes.Struct | undefined) => void) {
+    const topic = session.topic;
     const reason = {code: 1337, message: "something something reason"};
     await client.disconnect({topic, reason})
     setConnectedSession(undefined);
 }
 
+export async function signTransaction(client: SignClient, session: SessionTypes.Struct, chainId: string, transaction: AccountTransaction) {
+    return await client.request({
+        topic: session.topic,
+        request: {
+            method: "signTransaction",
+            params: transaction,
+        },
+        chainId,
+    }) as AccountTransactionSignature;
+}
+
+export async function sendTransaction(client: JsonRpcClient, transaction: AccountTransaction, signature: AccountTransactionSignature) {
+    const result = await client.sendAccountTransaction(transaction, signature);
+    if (!result) {
+        throw new Error("transaction was rejected by the node");
+    }
+    return getAccountTransactionHash(transaction, signature);
+}
+
+
+export async function signAndSendTransaction(signClient: SignClient, session: SessionTypes.Struct, rpcClient: JsonRpcClient, chainId: string, amount: GtuAmount, account: string, contract: Info, method: string) {
+    const sender = new AccountAddress(account);
+    const nonce = await rpcClient.getNextAccountNonce(sender).then(n => n?.nonce);
+    if (!nonce) {
+        throw new Error("cannot resolve next nonce");
+    }
+    const expiry = new TransactionExpiry(new Date(Date.now() + 3600000)); // from browser-wallet
+    const transaction = {
+        type: AccountTransactionType.UpdateSmartContractInstance,
+        header: {sender, nonce, expiry},
+        payload: contractUpdatePayload(amount, contract, method),
+    };
+    const signature = await signTransaction(signClient, session, chainId, transaction)
+    return sendTransaction(rpcClient, transaction, signature);
+}
+
+export function trySignSend(client: Result<SignClient, string> | undefined, session: SessionTypes.Struct | undefined, contract: Info | undefined, signSend: (client: SignClient, session: SessionTypes.Struct, contractInfo: Info) => ResultAsync<string, string>) {
+    Result.combine<[Result<SignClient, string>, Result<SessionTypes.Struct, string>, Result<Info, string>]>([
+        resultFromTruthy(client, "not initialized").andThen(r => r),
+        resultFromTruthy(session, "no session connected"),
+        resultFromTruthy(contract, "no contract"),
+    ])
+        .asyncAndThen(
+            ([client, account, contract]) => signSend(client, account, contract),
+        )
+}
+
 interface Props {
     client: SignClient;
     connectedSession?: SessionTypes.Struct;
-    setConnectedSession: (session: SessionTypes.Struct|undefined) => void;
+    setConnectedSession: (session: SessionTypes.Struct | undefined) => void;
 }
 
 export default function WalletConnect2(props: Props) {
@@ -80,7 +137,8 @@ export default function WalletConnect2(props: Props) {
                             <li>Peer metadata description: {connectedSession.peer.metadata.description}</li>
                         </ul>
                     </Alert>
-                    <Button onClick={() => disconnect(client, setConnectedSession).catch(console.error)}>
+                    <Button
+                        onClick={() => disconnect(client, connectedSession, setConnectedSession).catch(console.error)}>
                         Disconnect
                     </Button>
                 </>

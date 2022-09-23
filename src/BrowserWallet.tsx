@@ -1,8 +1,9 @@
 import {Alert, Button} from "react-bootstrap";
 import {WalletApi} from "@concordium/browser-wallet-api-helpers";
-import {AccountTransactionType, GtuAmount, toBuffer} from "@concordium/web-sdk";
+import {AccountTransactionType, GtuAmount} from "@concordium/web-sdk";
 import {Info} from "./Contract";
-import {MAX_CONTRACT_EXECUTION_ENERGY} from "./config";
+import {Result, ResultAsync} from "neverthrow";
+import {contractUpdatePayload, resultFromTruthy} from "./util";
 
 interface Props {
     client: WalletApi,
@@ -15,36 +16,36 @@ async function connect(client: WalletApi, setConnectedAccount: (a: string | unde
     return setConnectedAccount(account);
 }
 
-export async function deposit(client: WalletApi, amount: GtuAmount, account: string, contractInfo: Info) {
-    return client.sendTransaction(account, AccountTransactionType.UpdateSmartContractInstance, {
-        amount,
-        contractAddress: {
-            index: contractInfo.index,
-            subindex: BigInt(0),
-        },
-        receiveName: `${contractInfo.name}.insert`,
-        maxContractExecutionEnergy: MAX_CONTRACT_EXECUTION_ENERGY,
-        parameter: toBuffer(""),
-    })
-        .then(txHash =>
-            console.debug(`https://testnet.ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`)
-        )
+export async function deposit(client: WalletApi, amount: GtuAmount, account: string, contract: Info) {
+    return client.sendTransaction(account, AccountTransactionType.UpdateSmartContractInstance, contractUpdatePayload(amount, contract, "insert"));
 }
 
-export async function smash(client: WalletApi, account: string, contractInfo: Info) {
-    return client.sendTransaction(account, AccountTransactionType.UpdateSmartContractInstance, {
-        amount: new GtuAmount(BigInt(0)),
-        contractAddress: {
-            index: contractInfo.index,
-            subindex: BigInt(0),
-        },
-        receiveName: `${contractInfo.name}.smash`,
-        maxContractExecutionEnergy: MAX_CONTRACT_EXECUTION_ENERGY,
-        parameter: toBuffer(""),
-    })
-        .then(txHash =>
-            console.debug(`https://testnet.ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`)
+export async function smash(client: WalletApi, account: string, contract: Info) {
+    return client.sendTransaction(account, AccountTransactionType.UpdateSmartContractInstance, contractUpdatePayload(new GtuAmount(BigInt(0)), contract, "smash"));
+}
+
+// TODO Replace this crap with wrapper of 'client.sendTransaction' and just use that instead...
+export function wrapPromise(send: (client: WalletApi, account: string, contract: Info) => Promise<string>) {
+    return (client: WalletApi, account: string, contract: Info) =>
+        ResultAsync.fromPromise(
+            send(client, account, contract),
+            e => (e as Error).message,
+        );
+}
+
+export function trySendTransaction(client: Result<WalletApi, string> | undefined, account: string | undefined, contract: Info | undefined, send: (client: WalletApi, account: string, contract: Info) => ResultAsync<string, string>) {
+    return Result.combine<[Result<WalletApi, string>, Result<string, string>, Result<Info, string>]>([
+        resultFromTruthy(client, "not initialized").andThen(r => r),
+        resultFromTruthy(account, "no account connected"),
+        resultFromTruthy(contract, "no contract"),
+    ])
+        .asyncAndThen(
+            ([client, account, contract]) => send(client, account, contract),
         )
+        .map(txHash => {
+            console.debug(`https://testnet.ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`)
+            return txHash;
+        })
 }
 
 export default function BrowserWallet(props: Props) {
