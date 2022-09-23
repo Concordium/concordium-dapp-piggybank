@@ -50,7 +50,7 @@ export function Contract(props: Props) {
     useEffect(
         () => {
             setIsLoading(true);
-            resultFromTruthy(input)
+            resultFromTruthy(input, undefined)
                 .andThen(parseContractIndex)
                 .asyncAndThen(index =>
                     ResultAsync.fromPromise(

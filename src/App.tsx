@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import Alert from 'react-bootstrap/Alert';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
@@ -7,15 +7,16 @@ import Spinner from 'react-bootstrap/Spinner';
 import './App.css';
 import {Button, Container} from "react-bootstrap";
 import {Contract, Info} from "./Contract"
-import {HttpProvider, JsonRpcClient} from "@concordium/web-sdk";
+import {GtuAmount, HttpProvider, JsonRpcClient} from "@concordium/web-sdk";
 import {JSON_RPC_URL, WALLET_CONNECT_PROJECT_ID} from "./config";
 import {Result, ResultAsync} from "neverthrow";
 import {detectConcordiumProvider, WalletApi} from "@concordium/browser-wallet-api-helpers";
 import SignClient from "@walletconnect/sign-client";
 import WalletConnect2 from "./WalletConnect2";
 import {SessionTypes} from "@walletconnect/types";
-import BrowserWallet from "./BrowserWallet";
+import BrowserWallet, {deposit, smash} from "./BrowserWallet";
 import Piggybank, {refreshPiggybankState, State} from "./Piggybank";
+import {resultFromTruthy} from "./util";
 
 const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
@@ -112,6 +113,44 @@ export default function App() {
             ).then(setWalletconnect2Client);
         },
         []
+    );
+    const handleSubmitDeposit = useCallback(
+        (amount: bigint) => {
+            if (wallet === "browserwallet") {
+                Result.combine<[Result<WalletApi, string | undefined>, Result<string, string | undefined>, Result<Info, string | undefined>]>([
+                    resultFromTruthy(browserwalletClient, "not initialized").andThen(r => r),
+                    resultFromTruthy(browserwalletConnectedAccount, "no account connected"),
+                    resultFromTruthy(contract, "no contract"),
+                ]).match(
+                    ([client, account, contract]) => {
+                        deposit(client, new GtuAmount(amount), account, contract).catch(console.error);
+                    },
+                    e => console.log(`cannot send transaction: ${e}`),
+                );
+            } else if (wallet === "walletconnect2" && walletconnect2ConnectedSession) {
+                console.log("TODO: Implement submit deposit");
+            }
+        },
+        [wallet, browserwalletClient, walletconnect2ConnectedSession, browserwalletConnectedAccount, walletconnect2ConnectedSession],
+    );
+    const handleSubmitSmash = useCallback(
+        () => {
+            if (wallet === "browserwallet") {
+                Result.combine<[Result<WalletApi, string>, Result<string, string>, Result<Info, string>]>([
+                    resultFromTruthy(browserwalletClient, "not initialized").andThen(r => r),
+                    resultFromTruthy(browserwalletConnectedAccount, "no account connected"),
+                    resultFromTruthy(contract, "no contract"),
+                ]).match(
+                    ([client, account, contract]) => {
+                        smash(client, account, contract).catch(console.error);
+                    },
+                    e => console.log(`cannot send transaction: ${e}`),
+                );
+            } else if (wallet === "walletconnect2") {
+                console.log("TODO: Implement submit smash");
+            }
+        },
+        [wallet, browserwalletClient, walletconnect2ConnectedSession, browserwalletConnectedAccount, walletconnect2ConnectedSession],
     );
     return (
         <Container>
@@ -234,8 +273,8 @@ export default function App() {
                     {piggybankState?.match(
                         state => <Piggybank
                             state={state}
-                            submitDeposit={amount => console.log(`TODO: Submit deposit '${amount}'!`)}
-                            submitSmash={() => console.log(`TODO: Smash!`)}
+                            submitDeposit={handleSubmitDeposit}
+                            submitSmash={handleSubmitSmash}
                         />,
                         e => <i>{e}</i>
                     )}

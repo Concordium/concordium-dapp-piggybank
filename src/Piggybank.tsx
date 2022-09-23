@@ -48,7 +48,7 @@ export default function Piggybank(props: Props) {
     const [validationError, setValidationError] = useState<string>();
     const handleSubmitDeposit = useCallback(
         () => {
-            resultFromTruthy(depositInput)
+            resultFromTruthy(depositInput, undefined)
                 .andThen(parseAmount)
                 .match(submitDeposit, setValidationError);
         },
