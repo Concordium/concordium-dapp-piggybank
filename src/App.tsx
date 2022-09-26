@@ -12,7 +12,7 @@ import {CHAIN_ID, JSON_RPC_URL, WALLET_CONNECT_PROJECT_ID, ZERO_AMOUNT} from "./
 import {Result, ResultAsync} from "neverthrow";
 import {detectConcordiumProvider, WalletApi} from "@concordium/browser-wallet-api-helpers";
 import SignClient from "@walletconnect/sign-client";
-import WalletConnect2, {signAndSendTransaction, trySignSend} from "./WalletConnect2";
+import WalletConnect2, {resolveAccount, signAndSendTransaction, trySignSend} from "./WalletConnect2";
 import {SessionTypes} from "@walletconnect/types";
 import BrowserWallet, {deposit, trySendTransaction, smash, wrapPromise} from "./BrowserWallet";
 import Piggybank, {refreshPiggybankState, State} from "./Piggybank";
@@ -152,7 +152,7 @@ export default function App() {
                                 rpcClient.getJsonRpcClient(),
                                 CHAIN_ID,
                                 ZERO_AMOUNT,
-                                session.topic,
+                                resolveAccount(session),
                                 contract,
                                 "deposit",
                             )
@@ -186,7 +186,7 @@ export default function App() {
                                 rpcClient.getJsonRpcClient(),
                                 CHAIN_ID,
                                 ZERO_AMOUNT,
-                                session.topic,
+                                resolveAccount(session),
                                 contract,
                                 "smash",
                             )

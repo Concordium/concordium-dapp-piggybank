@@ -70,6 +70,9 @@ export async function sendTransaction(client: JsonRpcClient, transaction: Accoun
     return getAccountTransactionHash(transaction, signature);
 }
 
+export function resolveAccount(session: SessionTypes.Struct) {
+    return session.namespaces["ccd"].accounts[0];
+}
 
 export async function signAndSendTransaction(signClient: SignClient, session: SessionTypes.Struct, rpcClient: JsonRpcClient, chainId: string, amount: GtuAmount, account: string, contract: Info, method: string) {
     const sender = new AccountAddress(account);
@@ -123,8 +126,46 @@ export default function WalletConnect2(props: Props) {
                             <li>Expiry: {connectedSession.expiry}</li>
                             <li>Acknowledged: {connectedSession.acknowledged}</li>
                             <li>Controller: {connectedSession.controller}</li>
-                            <li>Namespaces: {JSON.stringify(connectedSession.namespaces)}</li>
-                            <li>Required namespaces: {JSON.stringify(connectedSession.requiredNamespaces)}</li>
+                            <li>
+                                Namespaces:
+                                <ul>
+                                    {
+                                        Object.entries(connectedSession.namespaces).map(
+                                            ([key, ns]) => {
+                                                return (
+                                                    <li>
+                                                        Key: {key}
+                                                        Accounts: {ns.accounts.join(", ")}
+                                                        Methods: {ns.methods.join(", ")}
+                                                        Events: {ns.events.join(", ")}
+                                                        Extension: {JSON.stringify(ns.extension)}
+                                                    </li>
+                                                );
+                                            }
+                                        )
+                                    }
+                                </ul>
+                            </li>
+                            <li>
+                                Required namespaces:
+                                <ul>
+                                    {
+                                        Object.entries(connectedSession.requiredNamespaces).map(
+                                            ([key, ns]) => {
+                                                return (
+                                                    <li>
+                                                        Key: {key}
+                                                        Chains: {ns.chains.join(", ")}
+                                                        Methods: {ns.methods.join(", ")}
+                                                        Events: {ns.events.join(", ")}
+                                                        Extension: {JSON.stringify(ns.extension)}
+                                                    </li>
+                                                );
+                                            }
+                                        )
+                                    }
+                                </ul>
+                            </li>
                             <li>Self public key: {connectedSession.self.publicKey}</li>
                             <li>Self metadata name: {connectedSession.self.metadata.name}</li>
                             <li>Self metadata url: {connectedSession.self.metadata.url}</li>
@@ -138,7 +179,10 @@ export default function WalletConnect2(props: Props) {
                         </ul>
                     </Alert>
                     <Button
-                        onClick={() => disconnect(client, connectedSession, setConnectedSession).catch(console.error)}>
+                        onClick={
+                            () =>
+                                disconnect(client, connectedSession, setConnectedSession).catch(console.error)
+                        }>
                         Disconnect
                     </Button>
                 </>
