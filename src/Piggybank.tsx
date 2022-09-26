@@ -30,20 +30,22 @@ export async function refreshPiggybankState(rpc: JsonRpcClient, contractInfo: In
 }
 
 export interface State {
-    smashed: boolean;
+    isSmashed: boolean;
     amount: string;
+    ownerAddress: string;
 }
 
 interface Props {
     state: State;
     submitDeposit: (amount: bigint) => void;
     submitSmash: () => void;
+    canSmash: boolean;
 }
 
 const parseAmount = Result.fromThrowable(BigInt, () => "invalid amount");
 
 export default function Piggybank(props: Props) {
-    const {state, submitDeposit, submitSmash} = props;
+    const {state, submitDeposit, submitSmash, canSmash} = props;
     const [depositInput, setDepositInput] = useState<string>("");
     const [validationError, setValidationError] = useState<string>();
     const handleSubmitDeposit = useCallback(
@@ -57,11 +59,15 @@ export default function Piggybank(props: Props) {
     return (
         <>
             <h1>Piggybank</h1>
-            {state.smashed
+            {state.isSmashed
                 ? <p>Already smashed.</p>
-                : <p>
-                    <Button onClick={submitSmash}>Smash!</Button>
-                </p>}
+                :
+                (
+                    <p>
+                        <Button onClick={submitSmash} disabled={!canSmash}>Smash!</Button>
+                    </p>
+                )
+            }
             <Form.Control
                 type="text"
                 placeholder="Deposit amount."

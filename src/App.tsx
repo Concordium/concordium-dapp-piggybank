@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import Alert from 'react-bootstrap/Alert';
 import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
@@ -112,6 +112,18 @@ export default function App() {
             ).then(setWalletconnect2Client);
         },
         []
+    );
+    // TODO Need an interface ('canSmash', 'handleSubmitDeposit', etc.) and a function for mapping from wallet to implementation.
+    const canSmash = useMemo(
+        () => {
+            if (wallet === "browserwallet" && contract) {
+                return browserwalletConnectedAccount === contract.owner.address;
+            } else if (wallet === "walletconnect2" && walletconnect2ConnectedSession && contract) {
+                return walletconnect2ConnectedSession.topic === contract.owner.address;
+            }
+            return false;
+        },
+        [wallet, browserwalletConnectedAccount, walletconnect2ConnectedSession, contract],
     );
     const handleSubmitDeposit = useCallback(
         (amount: bigint) => {
@@ -285,10 +297,10 @@ export default function App() {
                                     <Col>
                                         {!piggybankState && <Spinner animation="border"/>}
                                         {piggybankState?.match(
-                                            ({smashed, amount}) =>
+                                            ({isSmashed, amount}) =>
                                                 <strong>
                                                     Piggybank has {amount} CCD in it and
-                                                    is {smashed ? "smashed" : "not smashed"}.
+                                                    is {isSmashed ? "smashed" : "not smashed"}.
                                                 </strong>,
                                             e => <i>{e}</i>
                                         )}
@@ -307,6 +319,7 @@ export default function App() {
                             state={state}
                             submitDeposit={handleSubmitDeposit}
                             submitSmash={handleSubmitSmash}
+                            canSmash={canSmash}
                         />,
                         e => <i>{e}</i>
                     )}
