@@ -123,8 +123,8 @@ export default function WalletConnect2(props: Props) {
                             <li>Expiry: {connectedSession.expiry}</li>
                             <li>Acknowledged: {connectedSession.acknowledged}</li>
                             <li>Controller: {connectedSession.controller}</li>
-                            <li>Required namespaces: {connectedSession.namespaces.toString()}</li>
-                            <li>Required namespaces: {connectedSession.requiredNamespaces.toString()}</li>
+                            <li>Namespaces: {JSON.stringify(connectedSession.namespaces)}</li>
+                            <li>Required namespaces: {JSON.stringify(connectedSession.requiredNamespaces)}</li>
                             <li>Self public key: {connectedSession.self.publicKey}</li>
                             <li>Self metadata name: {connectedSession.self.metadata.name}</li>
                             <li>Self metadata url: {connectedSession.self.metadata.url}</li>
