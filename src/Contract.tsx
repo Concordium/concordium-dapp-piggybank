@@ -26,7 +26,7 @@ interface Props {
 }
 
 export async function refresh(rpc: JsonRpcClient, index: bigint) {
-    console.debug(`Looking up info for contract {contract}`);
+    console.debug(`Refreshing info for contract ${index.toString()}`);
     const info = await rpc.getInstanceInfo({index, subindex: BigInt(0)})
     if (!info) {
         throw new Error(`contract ${index} not found`);
@@ -117,11 +117,15 @@ export function ContractSelector(props: ModalProps) {
     const [currentPiggybankState, setCurrentPiggybankState] = useState<Result<State, string>>();
     useEffect(
         () => {
-            if (currentContract) {
-                refreshPiggybankState(rpc, currentContract)
-                    .then(setCurrentPiggybankState)
-                    .catch(console.error);
-            }
+            resultFromTruthy(currentContract, "no contract selected")
+                .asyncAndThen(
+                    c =>
+                        ResultAsync.fromPromise(
+                            refreshPiggybankState(rpc, c),
+                            e => (e as Error).message,
+                        )
+                )
+                .then(setCurrentPiggybankState);
         },
         [rpc, currentContract],
     );
@@ -158,6 +162,10 @@ export function ContractSelector(props: ModalProps) {
                                         <Col sm={10}><code>{currentContract.name}</code></Col>
                                     </Row>
                                     <Row>
+                                        <Col sm={2}>Index:</Col>
+                                        <Col sm={10}><code>{currentContract.index.toString()}</code></Col>
+                                    </Row>
+                                    <Row>
                                         <Col sm={2}>Owner:</Col>
                                         <Col sm={10}><code>{currentContract.owner.address}</code></Col>
                                     </Row>
@@ -176,11 +184,12 @@ export function ContractSelector(props: ModalProps) {
                                 </Alert>
                                 {!currentPiggybankState && <Spinner animation="border"/>}
                                 {currentPiggybankState?.match(
-                                    ({isSmashed, amount}) =>
+                                    ({isSmashed, amount}) => (
                                         <Alert variant="success">
                                             Piggybank has {amount} CCD in it and
                                             is {isSmashed ? "smashed" : "not smashed"}.
-                                        </Alert>,
+                                        </Alert>
+                                    ),
                                     e => <Alert variant="danger">{e}</Alert>,
                                 )}
                             </>

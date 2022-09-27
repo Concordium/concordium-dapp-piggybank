@@ -11,12 +11,13 @@ export function decodeAmount(buffer: Buffer, offset: number) {
     return [buffer.readBigUInt64LE(offset), offset + 8];
 }
 
-export function decodePiggybankState(buffer: Buffer, contract: Info): State {
+export function decodePiggybankState(buffer: Buffer, contract: Info, queryTime: Date): State {
     const [state] = decodeByte(buffer, 0);
     return {
         contract,
         isSmashed: Boolean(state),
         amount: microCcdToCcdString(contract.amount.microGtuAmount),
         ownerAddress: contract.owner.address,
+        queryTime,
     };
 }

@@ -6,26 +6,26 @@ import {useCallback, useEffect, useState} from "react";
 import {resultFromTruthy} from "./util";
 import {Button, Col, Form, InputGroup, Row} from "react-bootstrap";
 
-export async function refreshPiggybankState(rpc: JsonRpcClient, contractInfo: Info) {
-    const {version, name, index, methods} = contractInfo;
+export async function refreshPiggybankState(rpc: JsonRpcClient, contract: Info)  {
+    console.debug(`Refreshing piggybank state for contract ${contract.index.toString()}`);
+    const {version, name, index, methods} = contract;
 
     const expectedMethods = ["insert", "smash", "view"].map(m => `${name}.${m}`);
     if (!expectedMethods.every(methods.includes.bind(methods))) {
-        return err(`contract "${name}" is not a piggy bank as it lacks at least one of the expected methods (${expectedMethods.join(", ")})`);
+        throw new Error(`contract "${name}" is not a piggy bank as it lacks at least one of the expected methods (${expectedMethods.join(", ")})`);
     }
 
     const method = `${name}.view`;
     const result = await rpc.invokeContract({contract: {index, subindex: BigInt(0)}, method})
     if (!result) {
-        return err(`invocation of method "${method}" on contract "${index}" returned no result`);
+        throw new Error(`invocation of method "${method}" on contract "${index}" returned no result`);
     }
     switch (result.tag) {
         case "failure":
-            return err(`invocation of method "${method}" on v${version} contract "${index}" returned error: ${JSON.stringify(result.reason)}`);
+            throw new Error(`invocation of method "${method}" on v${version} contract "${index}" returned error: ${JSON.stringify(result.reason)}`);
         case "success":
             const buffer = toBuffer(result.returnValue || "", "hex");
-            let state = decodePiggybankState(buffer, contractInfo);
-            return ok(state);
+            return decodePiggybankState(buffer, contract, new Date());
     }
 }
 
@@ -34,6 +34,7 @@ export interface State {
     isSmashed: boolean;
     amount: string;
     ownerAddress: string;
+    queryTime: Date,
 }
 
 interface Props {
@@ -70,7 +71,10 @@ export default function Piggybank(props: Props) {
     const handleSubmitDeposit = useCallback(
         () => {
             console.log(`Attempting to deposit ${depositAmount} uCCD.`)
-            depositAmount && submitDeposit(depositAmount);
+            if (depositAmount) {
+                submitDeposit(depositAmount);
+                setDepositInput("");
+            }
         },
         [depositAmount, submitDeposit],
     );
@@ -78,9 +82,10 @@ export default function Piggybank(props: Props) {
         <Row>
             <Form.Group as={Col} md={8}>
                 <InputGroup className="mb-3" hasValidation>
+                    <InputGroup.Text id="basic-addon1">CCD</InputGroup.Text>
                     <Form.Control
                         type="text"
-                        placeholder="Deposit amount."
+                        placeholder="Amount to deposit"
                         value={depositInput}
                         onChange={e => setDepositInput(e.target.value)}
                         isInvalid={Boolean(validationError)}

@@ -14,12 +14,19 @@ import {detectConcordiumProvider, WalletApi} from "@concordium/browser-wallet-ap
 import SignClient from "@walletconnect/sign-client";
 import WalletConnect2, {resolveAccount, signAndSendTransaction, trySignSend} from "./WalletConnect2";
 import {SessionTypes} from "@walletconnect/types";
-import BrowserWallet, {deposit, trySendTransaction, smash, wrapPromise} from "./BrowserWallet";
+import BrowserWallet, {deposit, smash, trySendTransaction, wrapPromise} from "./BrowserWallet";
 import Piggybank, {refreshPiggybankState, State} from "./Piggybank";
+import {resultFromTruthy} from "./util";
 
 const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
 type Wallet = "browserwallet" | "walletconnect2";
+
+function refreshContract(index: bigint, setContract: React.Dispatch<Info | undefined>) {
+    refresh(rpc, index)
+        .then(setContract)
+        .catch(console.error)
+}
 
 export default function App() {
     const [wallet, setWallet] = useState<Wallet>();
@@ -29,35 +36,21 @@ export default function App() {
     const [piggybankState, setPiggybankState] = useState<Result<State, string>>();
     useEffect(
         () => {
-            if (contract) {
-                refreshPiggybankState(rpc, contract)
-                    .then(setPiggybankState)
-                    .catch(console.error);
-            }
-        },
-        [contract],
-    );
-
-    useEffect(
-        () => {
-            if (contract) {
-                refreshPiggybankState(rpc, contract)
-                    .then(setPiggybankState)
-                    .catch(console.error);
-            }
+            resultFromTruthy(contract, "no contract selected")
+                .asyncAndThen(
+                    c =>
+                        ResultAsync.fromPromise(
+                            refreshPiggybankState(rpc, c),
+                            e => (e as Error).message,
+                        )
+                )
+                .then(setPiggybankState);
         },
         [contract],
     );
 
     // Select default contract.
-    useEffect(
-        () => {
-            refresh(rpc, DEFAULT_CONTRACT_INDEX)
-                .then(setContract)
-                .catch(console.error)
-        },
-        [],
-    )
+    useEffect(() => refreshContract(DEFAULT_CONTRACT_INDEX, setContract), []);
 
     // Wallet clients: React only manages their existence, not their internal state.
     const [browserwalletClient, setBrowserwalletClient] = useState<Result<WalletApi, string>>();
@@ -308,9 +301,15 @@ export default function App() {
                             <>
                                 <h2>Piggybank instance <code>{state.contract.index.toString()}</code></h2>
                                 <Alert variant="light">
-                                    Owned by <code>{state.ownerAddress}</code>, has <strong>{state.amount}</strong> CCD
-                                    in it, and is <em>{state.isSmashed ? "smashed" : "not smashed"}</em>.
+                                    Owned by <code>{state.ownerAddress}</code>.
+                                    As of {state.queryTime.toLocaleTimeString()} it contains <strong>{state.amount}</strong> CCD
+                                    and is <em>{state.isSmashed ? "smashed" : "not smashed"}</em> (
+                                    <a href="#" onClick={() => refreshContract(state.contract.index, setContract)}>
+                                        refresh
+                                    </a>
+                                    ).
                                 </Alert>
+                                <h6>Update</h6>
                                 <p>
                                     Everyone can make deposits to the Piggybank. Only the owner can smash it.
                                 </p>
