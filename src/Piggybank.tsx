@@ -4,7 +4,7 @@ import {Info} from "./Contract";
 import {decodePiggybankState} from "./buffer";
 import {useCallback, useEffect, useState} from "react";
 import {resultFromTruthy} from "./util";
-import {Button, Form} from "react-bootstrap";
+import {Button, Col, Form, InputGroup, Row} from "react-bootstrap";
 
 export async function refreshPiggybankState(rpc: JsonRpcClient, contractInfo: Info) {
     const {version, name, index, methods} = contractInfo;
@@ -30,13 +30,13 @@ export async function refreshPiggybankState(rpc: JsonRpcClient, contractInfo: In
 }
 
 export interface State {
+    contract: Info;
     isSmashed: boolean;
     amount: string;
     ownerAddress: string;
 }
 
 interface Props {
-    state: State;
     submitDeposit: (amount: bigint) => void;
     submitSmash: () => void;
     canUpdate: boolean;
@@ -44,7 +44,7 @@ interface Props {
 }
 
 export default function Piggybank(props: Props) {
-    const {state, submitDeposit, submitSmash, canUpdate, canSmash} = props;
+    const {submitDeposit, submitSmash, canUpdate, canSmash} = props;
     const [depositInput, setDepositInput] = useState<string>("");
     const [depositAmount, setDepositAmount] = useState<bigint>();
     const [validationError, setValidationError] = useState<string>();
@@ -75,27 +75,26 @@ export default function Piggybank(props: Props) {
         [depositAmount, submitDeposit],
     );
     return (
-        <>
-            {state.isSmashed
-                ? <p>Already smashed.</p>
-                :
-                (
-                    <p>
-                        <Button onClick={submitSmash} disabled={!canSmash || !canUpdate}>Smash piggybank!</Button>
-                    </p>
-                )
-            }
-            <Form.Control
-                type="text"
-                placeholder="Deposit amount."
-                value={depositInput}
-                onChange={e => setDepositInput(e.target.value)}
-                isInvalid={Boolean(validationError)}
-            />
-            <Form.Control.Feedback type="invalid">
-                {validationError}
-            </Form.Control.Feedback>
-            <Button onClick={handleSubmitDeposit} disabled={!canUpdate || !depositInput}>Deposit</Button>
-        </>
+        <Row>
+            <Form.Group as={Col} md={8}>
+                <InputGroup className="mb-3" hasValidation>
+                    <Form.Control
+                        type="text"
+                        placeholder="Deposit amount."
+                        value={depositInput}
+                        onChange={e => setDepositInput(e.target.value)}
+                        isInvalid={Boolean(validationError)}
+                    />
+                    <Button variant="primary" onClick={handleSubmitDeposit}
+                            disabled={!canUpdate || !depositAmount}>Deposit</Button>
+                    <Form.Control.Feedback type="invalid">
+                        {validationError}
+                    </Form.Control.Feedback>
+                </InputGroup>
+            </Form.Group>
+            <Form.Group as={Col} md={4}>
+                <Button variant="danger" className="w-100" onClick={submitSmash} disabled={!canSmash || !canUpdate}>Smash!</Button>
+            </Form.Group>
+        </Row>
     );
 }

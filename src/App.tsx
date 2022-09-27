@@ -306,12 +306,15 @@ export default function App() {
                     {piggybankState?.match(
                         state => (
                             <>
+                                <h2>Piggybank instance <code>{state.contract.index.toString()}</code></h2>
                                 <Alert variant="light">
-                                    Piggybank owned by <code>{state.ownerAddress}</code> has {state.amount} CCD in it and
-                                    is {state.isSmashed ? "smashed" : "not smashed"}.
+                                    Owned by <code>{state.ownerAddress}</code>, has <strong>{state.amount}</strong> CCD
+                                    in it, and is <em>{state.isSmashed ? "smashed" : "not smashed"}</em>.
                                 </Alert>
+                                <p>
+                                    Everyone can make deposits to the Piggybank. Only the owner can smash it.
+                                </p>
                                 <Piggybank
-                                    state={state}
                                     submitDeposit={handleSubmitDeposit}
                                     submitSmash={handleSubmitSmash}
                                     canUpdate={canUpdate}

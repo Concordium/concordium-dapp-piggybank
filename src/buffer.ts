@@ -14,6 +14,7 @@ export function decodeAmount(buffer: Buffer, offset: number) {
 export function decodePiggybankState(buffer: Buffer, contract: Info): State {
     const [state] = decodeByte(buffer, 0);
     return {
+        contract,
         isSmashed: Boolean(state),
         amount: microCcdToCcdString(contract.amount.microGtuAmount),
         ownerAddress: contract.owner.address,

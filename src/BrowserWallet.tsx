@@ -25,7 +25,7 @@ export async function smash(client: WalletApi, account: string, contract: Info) 
 }
 
 // TODO Replace this crap with wrapper of 'client.sendTransaction' and just use that instead...
-export function wrapPromise<C, S>(send: (client: C, account: S, contract: Info) => Promise<string>) {
+export function wrapPromise<C, S>(send: (client: C, session: S, contract: Info) => Promise<string>) {
     return (client: C, session: S, contract: Info) =>
         ResultAsync.fromPromise(
             send(client, session, contract),

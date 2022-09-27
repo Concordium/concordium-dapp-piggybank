@@ -84,6 +84,7 @@ export function Contract(props: Props) {
                                 value={input}
                                 onChange={e => setInput(e.currentTarget.value)}
                                 isInvalid={Boolean(validationError)}
+                                autoFocus
                             />
                             <Form.Control.Feedback type="invalid">
                                 {validationError}
@@ -127,18 +128,20 @@ export function ContractSelector(props: ModalProps) {
 
     const handleClose = () => setShow(false);
     const handleShow = () => setShow(true);
-    const handleSave = () => {
+    const handleSelect = () => {
         setContract(currentContract);
         handleClose();
     };
-    const canSave = Boolean(currentPiggybankState?.isOk());
+    const canSelect = Boolean(currentPiggybankState?.isOk());
 
     return (
         <>
             <Button variant="outline-dark" size="sm" onClick={handleShow}>
                 {!contract && "Select contract"}
                 {contract && (
-                    <span>Using contract <code>{contract.index.toString()}</code></span>
+                    <span>
+                        Using&nbsp;contract&nbsp;<code>{contract.index.toString()}</code>
+                    </span>
                 )}
             </Button>
             <Modal show={show} onHide={handleClose} size="lg">
@@ -186,7 +189,7 @@ export function ContractSelector(props: ModalProps) {
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={handleClose}>Close</Button>
-                    <Button variant="primary" onClick={handleSave} disabled={!canSave}>Save</Button>
+                    <Button variant="primary" onClick={handleSelect} disabled={!canSelect}>Select</Button>
                 </Modal.Footer>
             </Modal>
         </>

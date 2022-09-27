@@ -8,9 +8,12 @@ import {contractUpdatePayload, resultFromTruthy} from "./util";
 import {
     AccountAddress,
     AccountTransaction,
-    AccountTransactionSignature, AccountTransactionType,
-    getAccountTransactionHash, GtuAmount,
-    JsonRpcClient, TransactionExpiry
+    AccountTransactionSignature,
+    AccountTransactionType,
+    getAccountTransactionHash,
+    GtuAmount,
+    JsonRpcClient,
+    TransactionExpiry
 } from "@concordium/web-sdk";
 
 async function connect(client: SignClient, setConnectedSession: (session: SessionTypes.Struct) => void) {
@@ -45,7 +48,7 @@ async function connect(client: SignClient, setConnectedSession: (session: Sessio
 }
 
 async function disconnect(client: SignClient, session: SessionTypes.Struct, setConnectedSession: (session: SessionTypes.Struct | undefined) => void) {
-    const topic = session.topic;
+    const {topic} = session;
     const reason = {code: 1337, message: "something something reason"};
     await client.disconnect({topic, reason})
     setConnectedSession(undefined);
