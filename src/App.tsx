@@ -25,7 +25,7 @@ export default function App() {
     const [wallet, setWallet] = useState<Wallet>();
     const [contract, setContract] = useState<Info>();
 
-    // Piggybank state is duplicated in Contract component. Could make sense to merge contract and piggybank state?
+    // Piggybank state is duplicated in Contract component. State is redundantly refreshed after selecting a new contract.
     const [piggybankState, setPiggybankState] = useState<Result<State, string>>();
     useEffect(
         () => {
@@ -49,6 +49,7 @@ export default function App() {
         [contract],
     );
 
+    // Select default contract.
     useEffect(
         () => {
             refresh(rpc, DEFAULT_CONTRACT_INDEX)
@@ -132,12 +133,26 @@ export default function App() {
         },
         []
     );
+    const canUpdate = useMemo(
+        // TODO Give reason?
+        () => {
+            if (wallet === "browserwallet") {
+                return Boolean(browserwalletConnectedAccount);
+            }
+            if (wallet === "walletconnect2") {
+                return Boolean(walletconnect2ConnectedSession);
+            }
+            return false;
+        },
+        [wallet, browserwalletConnectedAccount, walletconnect2ConnectedSession],
+    );
     // TODO Need an interface ('canSmash', 'handleSubmitDeposit', etc.) and a function for mapping from wallet to implementation.
     const canSmash = useMemo(
         () => {
             if (wallet === "browserwallet" && contract) {
                 return browserwalletConnectedAccount === contract.owner.address;
-            } else if (wallet === "walletconnect2" && walletconnect2ConnectedSession && contract) {
+            }
+            if (wallet === "walletconnect2" && walletconnect2ConnectedSession && contract) {
                 return resolveAccount(walletconnect2ConnectedSession) === contract.owner.address;
             }
             return false;
@@ -156,26 +171,24 @@ export default function App() {
                             deposit(client, new GtuAmount(amount), account, contract),
                     ),
                 )
-            } else if (wallet === "walletconnect2" && browserwalletClient) {
-                // TODO Don't depend on browser wallet client. - use 'rpc' instead!
-                console.debug("walletconnect: attempting deposit!");
+            } else if (wallet === "walletconnect2" && rpc) {
                 trySignSend(
                     walletconnect2Client,
                     walletconnect2ConnectedSession,
                     contract,
-                    (client, session, contract) =>
-                        browserwalletClient.asyncMap(rpcClient =>
+                    wrapPromise(
+                        (client, session, contract) =>
                             signAndSendTransaction(
                                 client,
                                 session,
-                                rpcClient.getJsonRpcClient(),
+                                rpc,
                                 CHAIN_ID,
                                 ZERO_AMOUNT,
                                 resolveAccount(session),
                                 contract,
                                 "deposit",
                             )
-                        ),
+                    ),
                 )
             }
         },
@@ -190,27 +203,25 @@ export default function App() {
                     contract,
                     wrapPromise(smash),
                 )
-            } else if (wallet === "walletconnect2" && browserwalletClient) {
-                // TODO Don't depend on browser wallet client. - use 'rpc' instead!
-                console.debug("walletconnect: attempting smash!");
+            } else if (wallet === "walletconnect2" && rpc) {
                 trySignSend(
                     walletconnect2Client,
                     walletconnect2ConnectedSession,
                     contract,
-                    (client, session, contract) =>
-                        browserwalletClient.asyncMap(rpcClient =>
+                    wrapPromise(
+                        (client, session, contract) =>
                             signAndSendTransaction(
                                 client,
                                 session,
-                                rpcClient.getJsonRpcClient(),
+                                rpc,
                                 CHAIN_ID,
                                 ZERO_AMOUNT,
                                 resolveAccount(session),
                                 contract,
                                 "smash",
                             )
-                        ),
-                );
+                    ),
+                )
             }
         },
         [wallet, browserwalletClient, browserwalletConnectedAccount, walletconnect2Client, walletconnect2ConnectedSession, contract],
@@ -294,14 +305,21 @@ export default function App() {
                     {!piggybankState && <Spinner animation="border"/>}
                     {piggybankState?.match(
                         state => (
-                            <Piggybank
-                                state={state}
-                                submitDeposit={handleSubmitDeposit}
-                                submitSmash={handleSubmitSmash}
-                                canSmash={canSmash}
-                            />
+                            <>
+                                <Alert variant="light">
+                                    Piggybank owned by <code>{state.ownerAddress}</code> has {state.amount} CCD in it and
+                                    is {state.isSmashed ? "smashed" : "not smashed"}.
+                                </Alert>
+                                <Piggybank
+                                    state={state}
+                                    submitDeposit={handleSubmitDeposit}
+                                    submitSmash={handleSubmitSmash}
+                                    canUpdate={canUpdate}
+                                    canSmash={canSmash}
+                                />
+                            </>
                         ),
-                        e => <i>{e}</i>,
+                        e => <Alert variant="danger">{e}</Alert>,
                     )}
                 </Col>
             </Row>

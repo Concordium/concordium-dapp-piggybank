@@ -1,8 +1,8 @@
 import {JsonRpcClient, toBuffer} from "@concordium/web-sdk";
-import {err, ok, Result} from "neverthrow";
+import {err, ok} from "neverthrow";
 import {Info} from "./Contract";
 import {decodePiggybankState} from "./buffer";
-import {useCallback, useState} from "react";
+import {useCallback, useEffect, useState} from "react";
 import {resultFromTruthy} from "./util";
 import {Button, Form} from "react-bootstrap";
 
@@ -39,32 +39,49 @@ interface Props {
     state: State;
     submitDeposit: (amount: bigint) => void;
     submitSmash: () => void;
+    canUpdate: boolean;
     canSmash: boolean;
 }
 
-const parseAmount = Result.fromThrowable(BigInt, () => "invalid amount");
-
 export default function Piggybank(props: Props) {
-    const {state, submitDeposit, submitSmash, canSmash} = props;
+    const {state, submitDeposit, submitSmash, canUpdate, canSmash} = props;
     const [depositInput, setDepositInput] = useState<string>("");
+    const [depositAmount, setDepositAmount] = useState<bigint>();
     const [validationError, setValidationError] = useState<string>();
-    const handleSubmitDeposit = useCallback(
+
+    useEffect(
         () => {
-            resultFromTruthy(depositInput, undefined)
-                .andThen(parseAmount)
-                .match(submitDeposit, setValidationError);
+            const [amount, error] =
+                resultFromTruthy(depositInput, undefined)
+                    .andThen(input => {
+                        const amount = Number(input);
+                        return Number.isNaN(amount) ? err("invalid input") : ok(amount);
+                    })
+                    .match<[bigint?, string?]>(
+                        a => [BigInt(Math.round(a * 1e6)), undefined],
+                        e => [undefined, e],
+                    );
+            setDepositAmount(amount);
+            setValidationError(error);
         },
         [depositInput],
     );
+
+    const handleSubmitDeposit = useCallback(
+        () => {
+            console.log(`Attempting to deposit ${depositAmount} uCCD.`)
+            depositAmount && submitDeposit(depositAmount);
+        },
+        [depositAmount, submitDeposit],
+    );
     return (
         <>
-            <h1>Piggybank</h1>
             {state.isSmashed
                 ? <p>Already smashed.</p>
                 :
                 (
                     <p>
-                        <Button onClick={submitSmash} disabled={!canSmash}>Smash!</Button>
+                        <Button onClick={submitSmash} disabled={!canSmash || !canUpdate}>Smash piggybank!</Button>
                     </p>
                 )
             }
@@ -78,7 +95,7 @@ export default function Piggybank(props: Props) {
             <Form.Control.Feedback type="invalid">
                 {validationError}
             </Form.Control.Feedback>
-            <Button onClick={handleSubmitDeposit}>Deposit</Button>
+            <Button onClick={handleSubmitDeposit} disabled={!canUpdate || !depositInput}>Deposit</Button>
         </>
     );
 }

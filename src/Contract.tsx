@@ -68,8 +68,9 @@ export function Contract(props: Props) {
                     setValidationError(e);
                     setIsLoading(false);
                 });
-        }, [input]
-    )
+        }, [rpc, input, setContract]
+    );
+
     return (
         <>
             <Row>
@@ -98,7 +99,7 @@ export function Contract(props: Props) {
                 </Col>
             </Row>
         </>
-    )
+    );
 }
 
 interface ModalProps {
@@ -121,7 +122,7 @@ export function ContractSelector(props: ModalProps) {
                     .catch(console.error);
             }
         },
-        [currentContract],
+        [rpc, currentContract],
     );
 
     const handleClose = () => setShow(false);
