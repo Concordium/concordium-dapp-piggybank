@@ -1,12 +1,8 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import Alert from 'react-bootstrap/Alert';
-import Col from 'react-bootstrap/Col';
-import Row from 'react-bootstrap/Row';
-import Spinner from 'react-bootstrap/Spinner';
 
 import './App.css';
-import {Button, Container} from "react-bootstrap";
-import {ContractSelector, Info, refresh} from "./Contract"
+import {Alert, Button, Col, Container, Row, Spinner} from "react-bootstrap";
+import {ContractManager, Info, refresh} from "./Contract"
 import {GtuAmount, HttpProvider, JsonRpcClient} from "@concordium/web-sdk";
 import {CHAIN_ID, DEFAULT_CONTRACT_INDEX, JSON_RPC_URL, WALLET_CONNECT_PROJECT_ID, ZERO_AMOUNT} from "./config";
 import {Result, ResultAsync} from "neverthrow";
@@ -17,6 +13,7 @@ import {SessionTypes} from "@walletconnect/types";
 import BrowserWallet, {deposit, smash, trySendTransaction, wrapPromise} from "./BrowserWallet";
 import Piggybank, {refreshPiggybankState, State} from "./Piggybank";
 import {resultFromTruthy} from "./util";
+import {ArrowRepeat} from 'react-bootstrap-icons';
 
 const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
@@ -225,7 +222,7 @@ export default function App() {
                 <Col className="d-flex">
                     <h1>Piggybank dApp</h1>
                     <div className="ms-auto p-2">
-                        <ContractSelector rpc={rpc} contract={contract} setContract={setContract}/>
+                        <ContractManager rpc={rpc} contract={contract} setContract={setContract}/>
                     </div>
                 </Col>
             </Row>
@@ -300,14 +297,19 @@ export default function App() {
                         state => (
                             <>
                                 <h2>Piggybank instance <code>{state.contract.index.toString()}</code></h2>
-                                <Alert variant="light">
-                                    Owned by <code>{state.ownerAddress}</code>.
-                                    As of {state.queryTime.toLocaleTimeString()} it contains <strong>{state.amount}</strong> CCD
-                                    and is <em>{state.isSmashed ? "smashed" : "not smashed"}</em> (
-                                    <a href="#" onClick={() => refreshContract(state.contract.index, setContract)}>
-                                        refresh
-                                    </a>
-                                    ).
+                                <Alert variant="light" className="d-flex">
+                                    <div className="me-auto p-2">
+                                        Owned by <code>{state.ownerAddress}</code>.
+                                        As of {state.queryTime.toLocaleTimeString()} it
+                                        contains <strong>{state.amount}</strong> CCD
+                                        and is <em>{state.isSmashed ? "smashed" : "not smashed"}</em>
+                                    </div>
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        className="p-2"
+                                        onClick={() => refreshContract(state.contract.index, setContract)}
+                                    ><ArrowRepeat/></Button>
                                 </Alert>
                                 <h6>Update</h6>
                                 <p>

@@ -5,8 +5,9 @@ import {decodePiggybankState} from "./buffer";
 import {useCallback, useEffect, useState} from "react";
 import {resultFromTruthy} from "./util";
 import {Button, Col, Form, InputGroup, Row} from "react-bootstrap";
+import {Hammer, PiggyBank as PiggyBankIcon} from 'react-bootstrap-icons';
 
-export async function refreshPiggybankState(rpc: JsonRpcClient, contract: Info)  {
+export async function refreshPiggybankState(rpc: JsonRpcClient, contract: Info) {
     console.debug(`Refreshing piggybank state for contract ${contract.index.toString()}`);
     const {version, name, index, methods} = contract;
 
@@ -98,7 +99,9 @@ export default function Piggybank(props: Props) {
                 </InputGroup>
             </Form.Group>
             <Form.Group as={Col} md={4}>
-                <Button variant="danger" className="w-100" onClick={submitSmash} disabled={!canSmash || !canUpdate}>Smash!</Button>
+                <Button variant="danger" className="w-100" onClick={submitSmash} disabled={!canSmash || !canUpdate}>
+                    <Hammer/>
+                </Button>
             </Form.Group>
         </Row>
     );

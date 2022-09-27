@@ -1,13 +1,9 @@
 import React, {useEffect, useState} from 'react';
-import Col from 'react-bootstrap/Col';
-import Form from 'react-bootstrap/Form';
-import Row from 'react-bootstrap/Row';
 import './App.css';
 import {AccountAddress, GtuAmount, JsonRpcClient} from "@concordium/web-sdk";
 import {Result, ResultAsync} from "neverthrow";
-import Spinner from "react-bootstrap/Spinner";
 import {resultFromTruthy} from "./util";
-import {Alert, Button, Modal} from "react-bootstrap";
+import {Alert, Button, Col, Form, Modal, Row, Spinner} from "react-bootstrap";
 import {refreshPiggybankState, State} from "./Piggybank";
 
 export interface Info {
@@ -42,7 +38,7 @@ export async function refresh(rpc: JsonRpcClient, index: bigint) {
 
 const parseContractIndex = Result.fromThrowable(BigInt, () => "invalid contract index");
 
-export function Contract(props: Props) {
+export function ContractSelector(props: Props) {
     const {children, rpc, setContract} = props;
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -109,7 +105,7 @@ interface ModalProps {
     setContract: React.Dispatch<Info | undefined>;
 }
 
-export function ContractSelector(props: ModalProps) {
+export function ContractManager(props: ModalProps) {
     const {rpc, contract, setContract} = props;
 
     const [show, setShow] = useState(false);
@@ -153,7 +149,7 @@ export function ContractSelector(props: ModalProps) {
                     <Modal.Title>Select contract</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <Contract rpc={rpc} setContract={setCurrentContract}>
+                    <ContractSelector rpc={rpc} setContract={setCurrentContract}>
                         {currentContract && (
                             <>
                                 <Alert variant="secondary">
@@ -194,7 +190,7 @@ export function ContractSelector(props: ModalProps) {
                                 )}
                             </>
                         )}
-                    </Contract>
+                    </ContractSelector>
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={handleClose}>Close</Button>
