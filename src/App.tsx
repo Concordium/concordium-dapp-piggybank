@@ -6,9 +6,9 @@ import Spinner from 'react-bootstrap/Spinner';
 
 import './App.css';
 import {Button, Container} from "react-bootstrap";
-import {Contract, Info} from "./Contract"
+import {ContractSelector, Info, refresh} from "./Contract"
 import {GtuAmount, HttpProvider, JsonRpcClient} from "@concordium/web-sdk";
-import {CHAIN_ID, JSON_RPC_URL, WALLET_CONNECT_PROJECT_ID, ZERO_AMOUNT} from "./config";
+import {CHAIN_ID, DEFAULT_CONTRACT_INDEX, JSON_RPC_URL, WALLET_CONNECT_PROJECT_ID, ZERO_AMOUNT} from "./config";
 import {Result, ResultAsync} from "neverthrow";
 import {detectConcordiumProvider, WalletApi} from "@concordium/browser-wallet-api-helpers";
 import SignClient from "@walletconnect/sign-client";
@@ -21,12 +21,22 @@ const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
 type Wallet = "browserwallet" | "walletconnect2";
 
-// TODO Convert to class component?
 export default function App() {
     const [wallet, setWallet] = useState<Wallet>();
     const [contract, setContract] = useState<Info>();
 
+    // Piggybank state is duplicated in Contract component. Could make sense to merge contract and piggybank state?
     const [piggybankState, setPiggybankState] = useState<Result<State, string>>();
+    useEffect(
+        () => {
+            if (contract) {
+                refreshPiggybankState(rpc, contract)
+                    .then(setPiggybankState)
+                    .catch(console.error);
+            }
+        },
+        [contract],
+    );
 
     useEffect(
         () => {
@@ -35,8 +45,18 @@ export default function App() {
                     .then(setPiggybankState)
                     .catch(console.error);
             }
-        }, [contract],
+        },
+        [contract],
     );
+
+    useEffect(
+        () => {
+            refresh(rpc, DEFAULT_CONTRACT_INDEX)
+                .then(setContract)
+                .catch(console.error)
+        },
+        [],
+    )
 
     // Wallet clients: React only manages their existence, not their internal state.
     const [browserwalletClient, setBrowserwalletClient] = useState<Result<WalletApi, string>>();
@@ -85,8 +105,7 @@ export default function App() {
                         icons: ["https://walletconnect.com/walletconnect-logo.png"],
                     },
                 }).then(client => {
-                    // Register event handlers.
-                    // TODO Make events actually update some state.
+                    // Register event handlers (from official docs).
                     client.on("session_event", (event) => {
                         // Handle session events, such as "chainChanged", "accountsChanged", etc.
                         console.debug('Wallet Connect event: session_event', {event});
@@ -119,7 +138,7 @@ export default function App() {
             if (wallet === "browserwallet" && contract) {
                 return browserwalletConnectedAccount === contract.owner.address;
             } else if (wallet === "walletconnect2" && walletconnect2ConnectedSession && contract) {
-                return walletconnect2ConnectedSession.topic === contract.owner.address;
+                return resolveAccount(walletconnect2ConnectedSession) === contract.owner.address;
             }
             return false;
         },
@@ -138,7 +157,7 @@ export default function App() {
                     ),
                 )
             } else if (wallet === "walletconnect2" && browserwalletClient) {
-                // TODO Don't depend on browser wallet client.
+                // TODO Don't depend on browser wallet client. - use 'rpc' instead!
                 console.debug("walletconnect: attempting deposit!");
                 trySignSend(
                     walletconnect2Client,
@@ -172,7 +191,7 @@ export default function App() {
                     wrapPromise(smash),
                 )
             } else if (wallet === "walletconnect2" && browserwalletClient) {
-                // TODO Don't depend on browser wallet client.
+                // TODO Don't depend on browser wallet client. - use 'rpc' instead!
                 console.debug("walletconnect: attempting smash!");
                 trySignSend(
                     walletconnect2Client,
@@ -199,7 +218,12 @@ export default function App() {
     return (
         <Container>
             <Row>
-                <Col><h1>Piggybank dApp</h1></Col>
+                <Col className="d-flex">
+                    <h1>Piggybank dApp</h1>
+                    <div className="ms-auto p-2">
+                        <ContractSelector rpc={rpc} contract={contract} setContract={setContract}/>
+                    </div>
+                </Col>
             </Row>
             <hr/>
             <Row className="mb-3">
@@ -227,16 +251,18 @@ export default function App() {
                                     <Spinner animation="border"/>
                                 )}
                                 {browserwalletClient?.match(
-                                    c => <BrowserWallet
-                                        client={c}
-                                        connectedAccount={browserwalletConnectedAccount}
-                                        setConnectedAccount={setBrowserwalletConnectedAccount}
-                                    />,
+                                    c => (
+                                        <BrowserWallet
+                                            client={c}
+                                            connectedAccount={browserwalletConnectedAccount}
+                                            setConnectedAccount={setBrowserwalletConnectedAccount}
+                                        />
+                                    ),
                                     e => (
                                         <Alert variant="danger">
                                             Browser Wallet is not available: {e} (is the extension installed?).
                                         </Alert>
-                                    )
+                                    ),
                                 )}
                             </>
                         )}
@@ -246,11 +272,13 @@ export default function App() {
                                     <Spinner animation="border"/>
                                 )}
                                 {walletconnect2Client?.match(
-                                    c => <WalletConnect2
-                                        client={c}
-                                        connectedSession={walletconnect2ConnectedSession}
-                                        setConnectedSession={setWalletconnect2ConnectedSession}
-                                    />,
+                                    c => (
+                                        <WalletConnect2
+                                            client={c}
+                                            connectedSession={walletconnect2ConnectedSession}
+                                            setConnectedSession={setWalletconnect2ConnectedSession}
+                                        />
+                                    ),
                                     e => (
                                         <Alert variant="danger">Wallet Connect is not available: {e}.</Alert>
                                     )
@@ -263,65 +291,17 @@ export default function App() {
             <hr/>
             <Row>
                 <Col>
-                    <Contract rpc={rpc} setContract={setContract}>
-                        {contract && (
-                            <Alert variant="secondary">
-                                <Row>
-                                    <Col><h5>Generic state</h5></Col>
-                                </Row>
-                                <Row>
-                                    <Col sm={2}>Name:</Col>
-                                    <Col sm={10}><code>{contract.name}</code></Col>
-                                </Row>
-                                <Row>
-                                    <Col sm={2}>Owner:</Col>
-                                    <Col sm={10}><code>{contract.owner.address}</code></Col>
-                                </Row>
-                                <Row>
-                                    <Col sm={2}>Balance:</Col>
-                                    <Col sm={10}>{contract.amount.microGtuAmount.toString()} μCCD</Col>
-                                </Row>
-                                <Row>
-                                    <Col sm={2}>Methods:</Col>
-                                    <Col sm={10}>{contract.methods.join(", ")}</Col>
-                                </Row>
-                                <Row>
-                                    <Col sm={2}>Platform:</Col>
-                                    <Col sm={10}>v{contract.version}</Col>
-                                </Row>
-                                <hr/>
-                                <Row>
-                                    <Col><h5>Piggybank state</h5></Col>
-                                </Row>
-                                <Row>
-                                    <Col>
-                                        {!piggybankState && <Spinner animation="border"/>}
-                                        {piggybankState?.match(
-                                            ({isSmashed, amount}) =>
-                                                <strong>
-                                                    Piggybank has {amount} CCD in it and
-                                                    is {isSmashed ? "smashed" : "not smashed"}.
-                                                </strong>,
-                                            e => <i>{e}</i>
-                                        )}
-                                    </Col>
-                                </Row>
-                            </Alert>
-                        )}
-                    </Contract>
-                </Col>
-            </Row>
-            <Row>
-                <Col>
                     {!piggybankState && <Spinner animation="border"/>}
                     {piggybankState?.match(
-                        state => <Piggybank
-                            state={state}
-                            submitDeposit={handleSubmitDeposit}
-                            submitSmash={handleSubmitSmash}
-                            canSmash={canSmash}
-                        />,
-                        e => <i>{e}</i>
+                        state => (
+                            <Piggybank
+                                state={state}
+                                submitDeposit={handleSubmitDeposit}
+                                submitSmash={handleSubmitSmash}
+                                canSmash={canSmash}
+                            />
+                        ),
+                        e => <i>{e}</i>,
                     )}
                 </Col>
             </Row>
