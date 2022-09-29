@@ -15,6 +15,7 @@ import {
     JsonRpcClient,
     TransactionExpiry
 } from "@concordium/web-sdk";
+import {CHAIN_ID} from "./config";
 
 async function connect(client: SignClient, setConnectedSession: (session: SessionTypes.Struct) => void) {
     try {
@@ -24,7 +25,7 @@ async function connect(client: SignClient, setConnectedSession: (session: Sessio
                     methods: [
                         'signTransaction',
                     ],
-                    chains: ['ccd:mainnet'],
+                    chains: [CHAIN_ID],
                     events: ['chainChanged', 'accountsChanged'],
                 },
             },
@@ -53,13 +54,30 @@ async function disconnect(client: SignClient, session: SessionTypes.Struct, setC
     await client.disconnect({topic, reason})
     setConnectedSession(undefined);
 }
+function stringifyJsonWithBigints(data: any) {
+    return JSON.stringify(data, (key, value) => {
+        if (typeof value === "bigint") {
+            return value.toString();
+        }
+        return value;
+    });
+}
 
 export async function signTransaction(client: SignClient, session: SessionTypes.Struct, chainId: string, transaction: AccountTransaction) {
+    const params = {
+        type: transaction.type.toString(),
+        header: {
+            sender: transaction.header.sender.address,
+            expiry: transaction.header.expiry.toString(),
+            nonce: transaction.header.nonce.toString(),
+        },
+        payload: stringifyJsonWithBigints(transaction.payload),
+    };
     return await client.request({
         topic: session.topic,
         request: {
             method: "signTransaction",
-            params: transaction,
+            params,
         },
         chainId,
     }) as AccountTransactionSignature;
@@ -74,7 +92,8 @@ export async function sendTransaction(client: JsonRpcClient, transaction: Accoun
 }
 
 export function resolveAccount(session: SessionTypes.Struct) {
-    return session.namespaces["ccd"].accounts[0];
+    const fullAddress = session.namespaces["ccd"].accounts[0];
+    return fullAddress.substring(fullAddress.lastIndexOf(":")+1);
 }
 
 export async function signAndSendTransaction(signClient: SignClient, session: SessionTypes.Struct, rpcClient: JsonRpcClient, chainId: string, amount: GtuAmount, account: string, contract: Info, method: string) {
@@ -136,7 +155,7 @@ export default function WalletConnect2(props: Props) {
                                         Object.entries(connectedSession.namespaces).map(
                                             ([key, ns]) => {
                                                 return (
-                                                    <li>
+                                                    <li key={key}>
                                                         Key: {key}
                                                         Accounts: {ns.accounts.join(", ")}
                                                         Methods: {ns.methods.join(", ")}
@@ -156,7 +175,7 @@ export default function WalletConnect2(props: Props) {
                                         Object.entries(connectedSession.requiredNamespaces).map(
                                             ([key, ns]) => {
                                                 return (
-                                                    <li>
+                                                    <li key={key}>
                                                         Key: {key}
                                                         Chains: {ns.chains.join(", ")}
                                                         Methods: {ns.methods.join(", ")}

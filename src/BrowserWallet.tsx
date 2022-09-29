@@ -4,6 +4,7 @@ import {AccountTransactionType, GtuAmount} from "@concordium/web-sdk";
 import {Info} from "./Contract";
 import {Result, ResultAsync} from "neverthrow";
 import {contractUpdatePayload, resultFromTruthy} from "./util";
+import {CCDSCAN_URL} from "./config";
 
 interface Props {
     client: WalletApi,
@@ -43,7 +44,7 @@ export function trySendTransaction(client: Result<WalletApi, string> | undefined
             ([client, account, contract]) => send(client, account, contract),
         )
         .map(txHash => {
-            console.debug(`https://testnet.ccdscan.io/?dcount=1&dentity=transaction&dhash=${txHash}`)
+            console.debug(`https://${CCDSCAN_URL}/?dcount=1&dentity=transaction&dhash=${txHash}`)
             return txHash;
         })
 }

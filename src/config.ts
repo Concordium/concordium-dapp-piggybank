@@ -6,3 +6,4 @@ export const DEFAULT_CONTRACT_INDEX = BigInt(81);
 export const MAX_CONTRACT_EXECUTION_ENERGY = BigInt(30000);
 export const CHAIN_ID = "ccd:testnet";
 export const ZERO_AMOUNT = new GtuAmount(BigInt(0));
+export const CCDSCAN_URL = "testnet.ccdscan.io";

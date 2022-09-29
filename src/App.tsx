@@ -307,7 +307,7 @@ export default function App() {
                                 <h2>Piggybank instance <code>{state.contract.index.toString()}</code></h2>
                                 <Alert variant="light" className="d-flex">
                                     <div className="me-auto p-2">
-                                        Owned by <code>{state.ownerAddress}</code>.
+                                        Owned by <code>{state.ownerAddress.slice(0, 4)}...{state.ownerAddress.slice(-4)}</code>.
                                         As of {state.queryTime.toLocaleTimeString()} it
                                         contains <strong>{state.amount}</strong> CCD
                                         and is <em>{state.isSmashed ? "smashed" : "not smashed"}</em>
