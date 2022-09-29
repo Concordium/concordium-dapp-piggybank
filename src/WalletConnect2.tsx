@@ -48,12 +48,13 @@ async function connect(client: SignClient, setConnectedSession: (session: Sessio
     }
 }
 
-async function disconnect(client: SignClient, session: SessionTypes.Struct, setConnectedSession: (session: SessionTypes.Struct | undefined) => void) {
+async function disconnect(client: SignClient, session: SessionTypes.Struct, clearConnectedSession: () => void) {
     const {topic} = session;
     const reason = {code: 1337, message: "something something reason"};
     await client.disconnect({topic, reason})
-    setConnectedSession(undefined);
+    clearConnectedSession();
 }
+
 function stringifyJsonWithBigints(data: any) {
     return JSON.stringify(data, (key, value) => {
         if (typeof value === "bigint") {
@@ -93,7 +94,7 @@ export async function sendTransaction(client: JsonRpcClient, transaction: Accoun
 
 export function resolveAccount(session: SessionTypes.Struct) {
     const fullAddress = session.namespaces["ccd"].accounts[0];
-    return fullAddress.substring(fullAddress.lastIndexOf(":")+1);
+    return fullAddress.substring(fullAddress.lastIndexOf(":") + 1);
 }
 
 export async function signAndSendTransaction(signClient: SignClient, session: SessionTypes.Struct, rpcClient: JsonRpcClient, chainId: string, amount: GtuAmount, account: string, contract: Info, method: string) {
@@ -127,10 +128,11 @@ interface Props {
     client: SignClient;
     connectedSession?: SessionTypes.Struct;
     setConnectedSession: (session: SessionTypes.Struct | undefined) => void;
+    connectionError: string | undefined;
 }
 
 export default function WalletConnect2(props: Props) {
-    const {client, connectedSession, setConnectedSession} = props;
+    const {client, connectedSession, setConnectedSession, connectionError} = props;
 
     return (
         <>
@@ -200,10 +202,20 @@ export default function WalletConnect2(props: Props) {
                             <li>Peer metadata description: {connectedSession.peer.metadata.description}</li>
                         </ul>
                     </Alert>
+                    {connectionError && (
+                        <Alert variant="danger">
+                            Ping error: {connectionError}
+                        </Alert>
+                    )}
                     <Button
                         onClick={
                             () =>
-                                disconnect(client, connectedSession, setConnectedSession).catch(console.error)
+                                disconnect(
+                                    client,
+                                    connectedSession,
+                                    () => setConnectedSession(undefined),
+                                )
+                                    .catch(console.error)
                         }>
                         Disconnect
                     </Button>

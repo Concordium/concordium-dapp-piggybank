@@ -4,7 +4,14 @@ import './App.css';
 import {Alert, Button, Col, Container, Row, Spinner} from "react-bootstrap";
 import {ContractManager, Info, refresh} from "./Contract"
 import {GtuAmount, HttpProvider, JsonRpcClient} from "@concordium/web-sdk";
-import {CHAIN_ID, DEFAULT_CONTRACT_INDEX, JSON_RPC_URL, WALLET_CONNECT_PROJECT_ID, ZERO_AMOUNT} from "./config";
+import {
+    CHAIN_ID,
+    DEFAULT_CONTRACT_INDEX,
+    JSON_RPC_URL,
+    PING_INTERVAL_MS,
+    WALLET_CONNECT_PROJECT_ID,
+    ZERO_AMOUNT
+} from "./config";
 import {Result, ResultAsync} from "neverthrow";
 import {detectConcordiumProvider, WalletApi} from "@concordium/browser-wallet-api-helpers";
 import SignClient from "@walletconnect/sign-client";
@@ -56,6 +63,7 @@ export default function App() {
     // Wallet state.
     const [browserwalletConnectedAccount, setBrowserwalletConnectedAccount] = useState<string>();
     const [walletconnect2ConnectedSession, setWalletconnect2ConnectedSession] = useState<SessionTypes.Struct>();
+    const [walletconnect2ConnectionError, setWalletconnect2ConnectionError] = useState<string>();
 
     // Attempt to initialize Browser Wallet Client.
     useEffect(
@@ -103,9 +111,9 @@ export default function App() {
                     });
                     client.on("session_update", ({topic, params}) => {
                         const {namespaces} = params;
-                        const _session = client.session.get(topic);
+                        const session = client.session.get(topic);
                         // Overwrite the `namespaces` of the existing session with the incoming one.
-                        const updatedSession = {..._session, namespaces};
+                        const updatedSession = {...session, namespaces};
                         // Integrate the updated session state into your dapp state.
                         console.debug('Wallet Connect event: session_update', {updatedSession});
                     });
@@ -123,6 +131,53 @@ export default function App() {
         },
         []
     );
+
+    // Ping Wallet Connect periodically.
+    // TODO Move to WC component.
+    useEffect(
+        () => {
+            if (walletconnect2Client && walletconnect2ConnectedSession) {
+                console.log("setting up ping loop");
+                const interval = setInterval(
+                    () => {
+                        console.debug("attempting to ping");
+                        walletconnect2Client.asyncAndThen(
+                            c => {
+                                console.debug("before send ping");
+                                const x = ResultAsync.fromPromise(
+                                    c.ping({topic: walletconnect2ConnectedSession.topic}),
+                                    e => `${e} (${typeof e})`,
+                                );
+                                console.debug("after send ping");
+                                return x;
+                            }
+                        )
+                            .then(
+                                r => r.match(
+                                    () => {
+                                        // ping successful
+                                        console.debug("ping successful");
+                                    },
+                                    e => {
+                                        console.error(`ping failed: ${e}`)
+                                        setWalletconnect2ConnectionError(e)
+                                    },
+                                )
+                            );
+                    },
+                    PING_INTERVAL_MS,
+                );
+                return () => {
+                    console.debug("tearing down ping loop");
+                    clearInterval(interval);
+                };
+            }
+        }
+        ,
+        [walletconnect2Client, walletconnect2ConnectedSession],
+    )
+    ;
+
     const canUpdate = useMemo(
         // TODO Give reason?
         () => {
@@ -286,6 +341,7 @@ export default function App() {
                                             client={c}
                                             connectedSession={walletconnect2ConnectedSession}
                                             setConnectedSession={setWalletconnect2ConnectedSession}
+                                            connectionError={walletconnect2ConnectionError}
                                         />
                                     ),
                                     e => (
@@ -307,7 +363,8 @@ export default function App() {
                                 <h2>Piggybank instance <code>{state.contract.index.toString()}</code></h2>
                                 <Alert variant="light" className="d-flex">
                                     <div className="me-auto p-2">
-                                        Owned by <code>{state.ownerAddress.slice(0, 4)}...{state.ownerAddress.slice(-4)}</code>.
+                                        Owned
+                                        by <code>{state.ownerAddress.slice(0, 4)}...{state.ownerAddress.slice(-4)}</code>.
                                         As of {state.queryTime.toLocaleTimeString()} it
                                         contains <strong>{state.amount}</strong> CCD
                                         and is <em>{state.isSmashed ? "smashed" : "not smashed"}</em>

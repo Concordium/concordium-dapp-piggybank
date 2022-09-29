@@ -7,3 +7,4 @@ export const MAX_CONTRACT_EXECUTION_ENERGY = BigInt(30000);
 export const CHAIN_ID = "ccd:testnet";
 export const ZERO_AMOUNT = new GtuAmount(BigInt(0));
 export const CCDSCAN_URL = "testnet.ccdscan.io";
+export const PING_INTERVAL_MS = 5000;
