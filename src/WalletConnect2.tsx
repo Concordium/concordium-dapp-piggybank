@@ -94,7 +94,7 @@ export async function signAndSendTransaction(signClient: SignClient, session: Se
 }
 
 export function trySignSend(client: Result<SignClient, string> | undefined, session: SessionTypes.Struct | undefined, contract: Info | undefined, signSend: (client: SignClient, session: SessionTypes.Struct, contractInfo: Info) => ResultAsync<string, string>) {
-    Result.combine<[Result<SignClient, string>, Result<SessionTypes.Struct, string>, Result<Info, string>]>([
+    return Result.combine<[Result<SignClient, string>, Result<SessionTypes.Struct, string>, Result<Info, string>]>([
         resultFromTruthy(client, "not initialized").andThen(r => r),
         resultFromTruthy(session, "no session connected"),
         resultFromTruthy(contract, "no contract"),

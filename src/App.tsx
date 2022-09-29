@@ -180,6 +180,10 @@ export default function App() {
                             )
                     ),
                 )
+                    .then(r => r.match(
+                        txHash => console.log(`transaction ${txHash} submitted`),
+                        e => console.error(`cannot submit transaction: ${e}`)
+                    ))
             }
         },
         [wallet, browserwalletClient, walletconnect2Client, browserwalletConnectedAccount, walletconnect2ConnectedSession, contract],
@@ -212,6 +216,10 @@ export default function App() {
                             )
                     ),
                 )
+                    .then(r => r.match(
+                        txHash => console.log(`transaction ${txHash} submitted`),
+                        e => console.error(`cannot sign or submit transaction: ${e}`)
+                    ))
             }
         },
         [wallet, browserwalletClient, browserwalletConnectedAccount, walletconnect2Client, walletconnect2ConnectedSession, contract],
