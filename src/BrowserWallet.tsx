@@ -3,7 +3,7 @@ import {WalletApi} from "@concordium/browser-wallet-api-helpers";
 import {AccountTransactionType, GtuAmount} from "@concordium/web-sdk";
 import {Info} from "./Contract";
 import {Result, ResultAsync} from "neverthrow";
-import {contractUpdatePayload, resultFromTruthy} from "./util";
+import {contractUpdatePayload, resultFromTruthy, resultFromTruthyResult} from "./util";
 import {CCDSCAN_URL} from "./config";
 
 interface Props {
@@ -36,7 +36,7 @@ export function wrapPromise<C, S>(send: (client: C, session: S, contract: Info) 
 
 export function trySendTransaction(client: Result<WalletApi, string> | undefined, account: string | undefined, contract: Info | undefined, send: (client: WalletApi, account: string, contract: Info) => ResultAsync<string, string>) {
     return Result.combine<[Result<WalletApi, string>, Result<string, string>, Result<Info, string>]>([
-        resultFromTruthy(client, "not initialized").andThen(r => r),
+        resultFromTruthyResult(client, "not initialized"),
         resultFromTruthy(account, "no account connected"),
         resultFromTruthy(contract, "no contract"),
     ])

@@ -4,7 +4,7 @@ import QRCodeModal from "@walletconnect/qrcode-modal";
 import {SessionTypes} from "@walletconnect/types";
 import {Result, ResultAsync} from "neverthrow";
 import {Info} from "./Contract";
-import {contractUpdatePayload, resultFromTruthy} from "./util";
+import {contractUpdatePayload, resultFromTruthy, resultFromTruthyResult} from "./util";
 import {
     AccountAddress,
     AccountTransaction,
@@ -115,7 +115,7 @@ export async function signAndSendTransaction(signClient: SignClient, session: Se
 
 export function trySignSend(client: Result<SignClient, string> | undefined, session: SessionTypes.Struct | undefined, contract: Info | undefined, signSend: (client: SignClient, session: SessionTypes.Struct, contractInfo: Info) => ResultAsync<string, string>) {
     return Result.combine<[Result<SignClient, string>, Result<SessionTypes.Struct, string>, Result<Info, string>]>([
-        resultFromTruthy(client, "not initialized").andThen(r => r),
+        resultFromTruthyResult(client, "not initialized"),
         resultFromTruthy(session, "no session connected"),
         resultFromTruthy(contract, "no contract"),
     ])

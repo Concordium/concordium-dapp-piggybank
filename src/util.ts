@@ -10,6 +10,10 @@ export function resultFromTruthy<T, E = string>(value: T | undefined, msg: E): R
     return err(msg);
 }
 
+export function resultFromTruthyResult<T, E = string>(value: Result<T, E> | undefined, msg: E): Result<T, E> {
+    return resultFromTruthy(value, msg).andThen(r => r);
+}
+
 export function contractUpdatePayload(amount: GtuAmount, contract: Info, method: string) {
     return {
         amount,
