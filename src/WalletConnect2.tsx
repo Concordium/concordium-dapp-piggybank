@@ -4,18 +4,13 @@ import QRCodeModal from "@walletconnect/qrcode-modal";
 import {SessionTypes} from "@walletconnect/types";
 import {Result, ResultAsync} from "neverthrow";
 import {Info} from "./Contract";
-import {contractUpdatePayload, resultFromTruthy, resultFromTruthyResult} from "./util";
+import {contractUpdatePayload, resultFromTruthy, resultFromTruthyResult, accountTransactionPayloadToJson} from "./util";
 import {
-    AccountAddress,
-    AccountTransaction,
-    AccountTransactionSignature,
     AccountTransactionType,
-    getAccountTransactionHash,
     GtuAmount,
     JsonRpcClient,
-    TransactionExpiry
 } from "@concordium/web-sdk";
-import {CHAIN_ID} from "./config";
+import {CHAIN_ID, WALLET_CONNECT_SESSION_NAMESPACE} from "./config";
 
 async function connect(client: SignClient, setConnectedSession: (session: SessionTypes.Struct) => void) {
     try {
@@ -23,10 +18,10 @@ async function connect(client: SignClient, setConnectedSession: (session: Sessio
             requiredNamespaces: {
                 ccd: {
                     methods: [
-                        'signTransaction',
+                        'sign_and_send_transaction',
                     ],
                     chains: [CHAIN_ID],
-                    events: ['chainChanged', 'accountsChanged'],
+                    events: ['chain_changed', 'accounts_changed'],
                 },
             },
         });
@@ -55,72 +50,36 @@ async function disconnect(client: SignClient, session: SessionTypes.Struct, clea
     clearConnectedSession();
 }
 
-function stringifyJsonWithBigints(data: any) {
-    return JSON.stringify(data, (key, value) => {
-        if (typeof value === "bigint") {
-            return value.toString();
-        }
-        return value;
-    });
-}
-
-export async function signTransaction(client: SignClient, session: SessionTypes.Struct, chainId: string, transaction: AccountTransaction) {
-    const params = {
-        type: transaction.type.toString(),
-        header: {
-            sender: transaction.header.sender.address,
-            expiry: transaction.header.expiry.toString(),
-            nonce: transaction.header.nonce.toString(),
-        },
-        payload: stringifyJsonWithBigints(transaction.payload),
-    };
-    return await client.request({
-        topic: session.topic,
-        request: {
-            method: "signTransaction",
-            params,
-        },
-        chainId,
-    }) as AccountTransactionSignature;
-}
-
-export async function sendTransaction(client: JsonRpcClient, transaction: AccountTransaction, signature: AccountTransactionSignature) {
-    const result = await client.sendAccountTransaction(transaction, signature);
-    if (!result) {
-        throw new Error("transaction was rejected by the node");
-    }
-    return getAccountTransactionHash(transaction, signature);
-}
-
 export function resolveAccount(session: SessionTypes.Struct) {
-    const fullAddress = session.namespaces["ccd"].accounts[0];
+    const fullAddress = session.namespaces[WALLET_CONNECT_SESSION_NAMESPACE].accounts[0];
     return fullAddress.substring(fullAddress.lastIndexOf(":") + 1);
 }
 
-export async function signAndSendTransaction(signClient: SignClient, session: SessionTypes.Struct, rpcClient: JsonRpcClient, chainId: string, amount: GtuAmount, account: string, contract: Info, method: string) {
-    const sender = new AccountAddress(account);
-    const nonce = await rpcClient.getNextAccountNonce(sender).then(n => n?.nonce);
-    if (!nonce) {
-        throw new Error("cannot resolve next nonce");
-    }
-    const expiry = new TransactionExpiry(new Date(Date.now() + 3600000)); // from browser-wallet
-    const transaction = {
-        type: AccountTransactionType.UpdateSmartContractInstance,
-        header: {sender, nonce, expiry},
-        payload: contractUpdatePayload(amount, contract, method),
+export async function signAndSendTransaction(signClient: SignClient, session: SessionTypes.Struct, rpcClient: JsonRpcClient, chainId: string, amount: GtuAmount, sender: string, contract: Info, method: string) {
+    const params = {
+        type: AccountTransactionType.UpdateSmartContractInstance.toString(),
+        sender,
+        payload: accountTransactionPayloadToJson(contractUpdatePayload(amount, contract, method)),
     };
-    const signature = await signTransaction(signClient, session, chainId, transaction)
-    return sendTransaction(rpcClient, transaction, signature);
+    const hash = await signClient.request({
+        topic: session.topic,
+        request: {
+            method: "sign_and_send_transaction",
+            params,
+        },
+        chainId,
+    });
+    return hash as string;
 }
 
-export function trySignSend(client: Result<SignClient, string> | undefined, session: SessionTypes.Struct | undefined, contract: Info | undefined, signSend: (client: SignClient, session: SessionTypes.Struct, contractInfo: Info) => ResultAsync<string, string>) {
+export function trySend(client: Result<SignClient, string> | undefined, session: SessionTypes.Struct | undefined, contract: Info | undefined, send: (client: SignClient, session: SessionTypes.Struct, contractInfo: Info) => ResultAsync<string, string>) {
     return Result.combine<[Result<SignClient, string>, Result<SessionTypes.Struct, string>, Result<Info, string>]>([
         resultFromTruthyResult(client, "not initialized"),
         resultFromTruthy(session, "no session connected"),
         resultFromTruthy(contract, "no contract"),
     ])
         .asyncAndThen(
-            ([client, account, contract]) => signSend(client, account, contract),
+            ([client, account, contract]) => send(client, account, contract),
         )
 }
 

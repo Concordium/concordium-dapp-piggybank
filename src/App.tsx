@@ -15,7 +15,7 @@ import {
 import {Result, ResultAsync} from "neverthrow";
 import {detectConcordiumProvider, WalletApi} from "@concordium/browser-wallet-api-helpers";
 import SignClient from "@walletconnect/sign-client";
-import WalletConnect2, {resolveAccount, signAndSendTransaction, trySignSend} from "./WalletConnect2";
+import WalletConnect2, {resolveAccount, signAndSendTransaction, trySend} from "./WalletConnect2";
 import {SessionTypes} from "@walletconnect/types";
 import BrowserWallet, {deposit, smash, trySendTransaction, wrapPromise} from "./BrowserWallet";
 import Piggybank, {refreshPiggybankState, State} from "./Piggybank";
@@ -143,13 +143,10 @@ export default function App() {
                         console.debug("attempting to ping");
                         walletconnect2Client.asyncAndThen(
                             c => {
-                                console.debug("before send ping");
-                                const x = ResultAsync.fromPromise(
+                                return ResultAsync.fromPromise(
                                     c.ping({topic: walletconnect2ConnectedSession.topic}),
                                     e => `${e} (${typeof e})`,
                                 );
-                                console.debug("after send ping");
-                                return x;
                             }
                         )
                             .then(
@@ -217,7 +214,7 @@ export default function App() {
                     ),
                 )
             } else if (wallet === "walletconnect2" && rpc) {
-                trySignSend(
+                trySend(
                     walletconnect2Client,
                     walletconnect2ConnectedSession,
                     contract,
@@ -228,7 +225,7 @@ export default function App() {
                                 session,
                                 rpc,
                                 CHAIN_ID,
-                                ZERO_AMOUNT,
+                                new GtuAmount(amount),
                                 resolveAccount(session),
                                 contract,
                                 "deposit",
@@ -236,8 +233,8 @@ export default function App() {
                     ),
                 )
                     .then(r => r.match(
-                        txHash => console.log(`transaction ${txHash} submitted`),
-                        e => console.error(`cannot submit transaction: ${e}`)
+                        txHash => console.log("transaction submitted", {hash: txHash}),
+                        e => console.error("cannot submit transaction", {error: e})
                     ))
             }
         },
@@ -253,7 +250,7 @@ export default function App() {
                     wrapPromise(smash),
                 )
             } else if (wallet === "walletconnect2" && rpc) {
-                trySignSend(
+                trySend(
                     walletconnect2Client,
                     walletconnect2ConnectedSession,
                     contract,

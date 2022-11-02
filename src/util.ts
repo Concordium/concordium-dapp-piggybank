@@ -1,5 +1,5 @@
 import {err, ok, Result} from "neverthrow";
-import {GtuAmount, toBuffer} from "@concordium/web-sdk";
+import {AccountTransactionPayload, GtuAmount, toBuffer} from "@concordium/web-sdk";
 import {Info} from "./Contract";
 import {MAX_CONTRACT_EXECUTION_ENERGY} from "./config";
 
@@ -26,3 +26,20 @@ export function contractUpdatePayload(amount: GtuAmount, contract: Info, method:
         parameter: toBuffer(""),
     };
 }
+
+export function accountTransactionPayloadToJson(data: AccountTransactionPayload) {
+    return JSON.stringify(data, (key, value) => {
+        if (value instanceof GtuAmount) {
+            return value.microGtuAmount.toString();
+        }
+        if (value?.type === "Buffer") {
+            // Buffer has already been transformed by its 'toJSON' method.
+            return toBuffer(value.data).toString("hex");
+        }
+        if (typeof value === "bigint") {
+            return Number(value);
+        }
+        return value;
+    });
+}
+

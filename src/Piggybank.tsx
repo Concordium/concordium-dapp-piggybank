@@ -23,7 +23,7 @@ export async function refreshPiggybankState(rpc: JsonRpcClient, contract: Info) 
     }
     switch (result.tag) {
         case "failure":
-            throw new Error(`invocation of method "${method}" on v${version} contract "${index}" returned error: ${JSON.stringify(result.reason)}`);
+            throw new Error(`invocation of method "${method}" on v${version} contract "${index}" failed: ${JSON.stringify(result.reason)}`);
         case "success":
             const buffer = toBuffer(result.returnValue || "", "hex");
             return decodePiggybankState(buffer, contract, new Date());
@@ -91,8 +91,11 @@ export default function Piggybank(props: Props) {
                         onChange={e => setDepositInput(e.target.value)}
                         isInvalid={Boolean(validationError)}
                     />
-                    <Button variant="primary" onClick={handleSubmitDeposit}
-                            disabled={!canUpdate || !depositAmount}>Deposit</Button>
+                    <Button
+                        variant="primary"
+                        onClick={handleSubmitDeposit}
+                        disabled={!canUpdate || !depositAmount}
+                    >Deposit</Button>
                     <Form.Control.Feedback type="invalid">
                         {validationError}
                     </Form.Control.Feedback>
