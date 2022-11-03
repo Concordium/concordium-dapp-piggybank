@@ -55,21 +55,40 @@ export function resolveAccount(session: SessionTypes.Struct) {
     return fullAddress.substring(fullAddress.lastIndexOf(":") + 1);
 }
 
+interface SignAndSendTransactionResult {
+    hash: string;
+}
+interface SignAndSendTransactionError {
+    code: number;
+    message: string;
+}
+
+function isSignAndSendTransactionError(obj: any): obj is SignAndSendTransactionError {
+    return 'code' in obj && 'message' in obj;
+}
+
 export async function signAndSendTransaction(signClient: SignClient, session: SessionTypes.Struct, rpcClient: JsonRpcClient, chainId: string, amount: GtuAmount, sender: string, contract: Info, method: string) {
     const params = {
-        type: AccountTransactionType.UpdateSmartContractInstance.toString(),
+        type: AccountTransactionType[AccountTransactionType.UpdateSmartContractInstance],
         sender,
         payload: accountTransactionPayloadToJson(contractUpdatePayload(amount, contract, method)),
     };
-    const hash = await signClient.request({
-        topic: session.topic,
-        request: {
-            method: "sign_and_send_transaction",
-            params,
-        },
-        chainId,
-    });
-    return hash as string;
+    try {
+        const {hash} = await signClient.request({
+            topic: session.topic,
+            request: {
+                method: "sign_and_send_transaction",
+                params,
+            },
+            chainId,
+        }) as SignAndSendTransactionResult;
+        return hash;
+    } catch (e) {
+        if (isSignAndSendTransactionError(e) && e.code === 5000) {
+            throw new Error('transaction rejected in wallet');
+        }
+        throw e;
+    }
 }
 
 export function trySend(client: Result<SignClient, string> | undefined, session: SessionTypes.Struct | undefined, contract: Info | undefined, send: (client: SignClient, session: SessionTypes.Struct, contractInfo: Info) => ResultAsync<string, string>) {

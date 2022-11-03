@@ -140,7 +140,7 @@ export default function App() {
                 console.log("setting up ping loop");
                 const interval = setInterval(
                     () => {
-                        console.debug("attempting to ping");
+                        // console.debug("attempting to ping");
                         walletconnect2Client.asyncAndThen(
                             c => {
                                 return ResultAsync.fromPromise(
@@ -152,8 +152,7 @@ export default function App() {
                             .then(
                                 r => r.match(
                                     () => {
-                                        // ping successful
-                                        console.debug("ping successful");
+                                        // console.debug("ping successful");
                                     },
                                     e => {
                                         console.error(`ping failed: ${e}`)

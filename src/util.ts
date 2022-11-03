@@ -23,7 +23,8 @@ export function contractUpdatePayload(amount: GtuAmount, contract: Info, method:
         },
         receiveName: `${contract.name}.${method}`,
         maxContractExecutionEnergy: MAX_CONTRACT_EXECUTION_ENERGY,
-        parameter: toBuffer(""),
+        message: toBuffer(""),
+        parameter: toBuffer(""), // DEPRECATED
     };
 }
 
