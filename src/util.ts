@@ -17,7 +17,11 @@ export function resultFromTruthyResult<T, E = string>(value: Result<T, E> | unde
 export function contractUpdatePayload(amount: GtuAmount, contract: Info, method: string) {
     return {
         amount,
-        contractAddress: {
+        contractAddress: { // DEPRECATED
+            index: contract.index,
+            subindex: BigInt(0),
+        },
+        address: {
             index: contract.index,
             subindex: BigInt(0),
         },
@@ -43,4 +47,3 @@ export function accountTransactionPayloadToJson(data: AccountTransactionPayload)
         return value;
     });
 }
-

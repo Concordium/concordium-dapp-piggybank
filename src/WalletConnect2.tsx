@@ -58,6 +58,7 @@ export function resolveAccount(session: SessionTypes.Struct) {
 interface SignAndSendTransactionResult {
     hash: string;
 }
+
 interface SignAndSendTransactionError {
     code: number;
     message: string;
@@ -69,7 +70,7 @@ function isSignAndSendTransactionError(obj: any): obj is SignAndSendTransactionE
 
 export async function signAndSendTransaction(signClient: SignClient, session: SessionTypes.Struct, rpcClient: JsonRpcClient, chainId: string, amount: GtuAmount, sender: string, contract: Info, method: string) {
     const params = {
-        type: AccountTransactionType[AccountTransactionType.UpdateSmartContractInstance],
+        type: "Update", // TODO replace with name from Web SDK once it's been updated
         sender,
         payload: accountTransactionPayloadToJson(contractUpdatePayload(amount, contract, method)),
     };
