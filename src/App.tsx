@@ -227,7 +227,7 @@ export default function App() {
                                 new GtuAmount(amount),
                                 resolveAccount(session),
                                 contract,
-                                "deposit",
+                                "insert",
                             )
                     ),
                 )
