@@ -1,25 +1,24 @@
-import SignClient from "@walletconnect/sign-client";
-import {Alert, Button} from "react-bootstrap";
-import QRCodeModal from "@walletconnect/qrcode-modal";
-import {SessionTypes} from "@walletconnect/types";
-import {Result, ResultAsync} from "neverthrow";
-import {Info} from "./Contract";
-import {contractUpdatePayload, resultFromTruthy, resultFromTruthyResult, accountTransactionPayloadToJson} from "./util";
+import SignClient from '@walletconnect/sign-client';
+import { Alert, Button } from 'react-bootstrap';
+import QRCodeModal from '@walletconnect/qrcode-modal';
+import { SessionTypes } from '@walletconnect/types';
+import { Result, ResultAsync } from 'neverthrow';
+import { GtuAmount, JsonRpcClient } from '@concordium/web-sdk';
+import { Info } from './Contract';
 import {
-    AccountTransactionType,
-    GtuAmount,
-    JsonRpcClient,
-} from "@concordium/web-sdk";
-import {CHAIN_ID, WALLET_CONNECT_SESSION_NAMESPACE} from "./config";
+    contractUpdatePayload,
+    resultFromTruthy,
+    resultFromTruthyResult,
+    accountTransactionPayloadToJson,
+} from './util';
+import { CHAIN_ID, WALLET_CONNECT_SESSION_NAMESPACE } from './config';
 
 async function connect(client: SignClient, setConnectedSession: (session: SessionTypes.Struct) => void) {
     try {
-        const {uri, approval} = await client.connect({
+        const { uri, approval } = await client.connect({
             requiredNamespaces: {
                 ccd: {
-                    methods: [
-                        'sign_and_send_transaction',
-                    ],
+                    methods: ['sign_and_send_transaction'],
                     chains: [CHAIN_ID],
                     events: ['chain_changed', 'accounts_changed'],
                 },
@@ -44,15 +43,15 @@ async function connect(client: SignClient, setConnectedSession: (session: Sessio
 }
 
 async function disconnect(client: SignClient, session: SessionTypes.Struct, clearConnectedSession: () => void) {
-    const {topic} = session;
-    const reason = {code: 1337, message: "something something reason"};
-    await client.disconnect({topic, reason})
+    const { topic } = session;
+    const reason = { code: 1337, message: 'something something reason' };
+    await client.disconnect({ topic, reason });
     clearConnectedSession();
 }
 
 export function resolveAccount(session: SessionTypes.Struct) {
     const fullAddress = session.namespaces[WALLET_CONNECT_SESSION_NAMESPACE].accounts[0];
-    return fullAddress.substring(fullAddress.lastIndexOf(":") + 1);
+    return fullAddress.substring(fullAddress.lastIndexOf(':') + 1);
 }
 
 interface SignAndSendTransactionResult {
@@ -68,21 +67,30 @@ function isSignAndSendTransactionError(obj: any): obj is SignAndSendTransactionE
     return 'code' in obj && 'message' in obj;
 }
 
-export async function signAndSendTransaction(signClient: SignClient, session: SessionTypes.Struct, rpcClient: JsonRpcClient, chainId: string, amount: GtuAmount, sender: string, contract: Info, method: string) {
+export async function signAndSendTransaction(
+    signClient: SignClient,
+    session: SessionTypes.Struct,
+    rpcClient: JsonRpcClient,
+    chainId: string,
+    amount: GtuAmount,
+    sender: string,
+    contract: Info,
+    method: string
+) {
     const params = {
-        type: "Update", // TODO replace with name from Web SDK once it's been updated
+        type: 'Update', // TODO replace with name from Web SDK once it's been updated
         sender,
         payload: accountTransactionPayloadToJson(contractUpdatePayload(amount, contract, method)),
     };
     try {
-        const {hash} = await signClient.request({
+        const { hash } = (await signClient.request({
             topic: session.topic,
             request: {
-                method: "sign_and_send_transaction",
+                method: 'sign_and_send_transaction',
                 params,
             },
             chainId,
-        }) as SignAndSendTransactionResult;
+        })) as SignAndSendTransactionResult;
         return hash;
     } catch (e) {
         if (isSignAndSendTransactionError(e) && e.code === 5000) {
@@ -92,15 +100,17 @@ export async function signAndSendTransaction(signClient: SignClient, session: Se
     }
 }
 
-export function trySend(client: Result<SignClient, string> | undefined, session: SessionTypes.Struct | undefined, contract: Info | undefined, send: (client: SignClient, session: SessionTypes.Struct, contractInfo: Info) => ResultAsync<string, string>) {
+export function trySend(
+    client: Result<SignClient, string> | undefined,
+    session: SessionTypes.Struct | undefined,
+    contract: Info | undefined,
+    send: (client: SignClient, session: SessionTypes.Struct, contractInfo: Info) => ResultAsync<string, string>
+) {
     return Result.combine<[Result<SignClient, string>, Result<SessionTypes.Struct, string>, Result<Info, string>]>([
-        resultFromTruthyResult(client, "not initialized"),
-        resultFromTruthy(session, "no session connected"),
-        resultFromTruthy(contract, "no contract"),
-    ])
-        .asyncAndThen(
-            ([client, account, contract]) => send(client, account, contract),
-        )
+        resultFromTruthyResult(client, 'not initialized'),
+        resultFromTruthy(session, 'no session connected'),
+        resultFromTruthy(contract, 'no contract'),
+    ]).asyncAndThen(([c, account, contractInfo]) => send(c, account, contractInfo));
 }
 
 interface Props {
@@ -111,7 +121,7 @@ interface Props {
 }
 
 export default function WalletConnect2(props: Props) {
-    const {client, connectedSession, setConnectedSession, connectionError} = props;
+    const { client, connectedSession, setConnectedSession, connectionError } = props;
 
     return (
         <>
@@ -132,70 +142,55 @@ export default function WalletConnect2(props: Props) {
                             <li>
                                 Namespaces:
                                 <ul>
-                                    {
-                                        Object.entries(connectedSession.namespaces).map(
-                                            ([key, ns]) => {
-                                                return (
-                                                    <li key={key}>
-                                                        Key: {key}
-                                                        Accounts: {ns.accounts.join(", ")}
-                                                        Methods: {ns.methods.join(", ")}
-                                                        Events: {ns.events.join(", ")}
-                                                        Extension: {JSON.stringify(ns.extension)}
-                                                    </li>
-                                                );
-                                            }
-                                        )
-                                    }
+                                    {Object.entries(connectedSession.namespaces).map(([key, ns]) => {
+                                        return (
+                                            <li key={key}>
+                                                Key: {key}
+                                                Accounts: {ns.accounts.join(', ')}
+                                                Methods: {ns.methods.join(', ')}
+                                                Events: {ns.events.join(', ')}
+                                                Extension: {JSON.stringify(ns.extension)}
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             </li>
                             <li>
                                 Required namespaces:
                                 <ul>
-                                    {
-                                        Object.entries(connectedSession.requiredNamespaces).map(
-                                            ([key, ns]) => {
-                                                return (
-                                                    <li key={key}>
-                                                        Key: {key}
-                                                        Chains: {ns.chains.join(", ")}
-                                                        Methods: {ns.methods.join(", ")}
-                                                        Events: {ns.events.join(", ")}
-                                                        Extension: {JSON.stringify(ns.extension)}
-                                                    </li>
-                                                );
-                                            }
-                                        )
-                                    }
+                                    {Object.entries(connectedSession.requiredNamespaces).map(([key, ns]) => {
+                                        return (
+                                            <li key={key}>
+                                                Key: {key}
+                                                Chains: {ns.chains.join(', ')}
+                                                Methods: {ns.methods.join(', ')}
+                                                Events: {ns.events.join(', ')}
+                                                Extension: {JSON.stringify(ns.extension)}
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             </li>
                             <li>Self public key: {connectedSession.self.publicKey}</li>
                             <li>Self metadata name: {connectedSession.self.metadata.name}</li>
                             <li>Self metadata url: {connectedSession.self.metadata.url}</li>
-                            <li>Self metadata icons: {connectedSession.self.metadata.icons.join(", ")}</li>
+                            <li>Self metadata icons: {connectedSession.self.metadata.icons.join(', ')}</li>
                             <li>Self metadata description: {connectedSession.self.metadata.description}</li>
                             <li>Peer public key: {connectedSession.peer.publicKey}</li>
                             <li>Peer metadata name: {connectedSession.peer.metadata.name}</li>
                             <li>Peer metadata url: {connectedSession.peer.metadata.url}</li>
-                            <li>Peer metadata icons: {connectedSession.peer.metadata.icons.join(", ")}</li>
+                            <li>Peer metadata icons: {connectedSession.peer.metadata.icons.join(', ')}</li>
                             <li>Peer metadata description: {connectedSession.peer.metadata.description}</li>
                         </ul>
                     </Alert>
-                    {connectionError && (
-                        <Alert variant="danger">
-                            Ping error: {connectionError}
-                        </Alert>
-                    )}
+                    {connectionError && <Alert variant="danger">Ping error: {connectionError}</Alert>}
                     <Button
-                        onClick={
-                            () =>
-                                disconnect(
-                                    client,
-                                    connectedSession,
-                                    () => setConnectedSession(undefined),
-                                )
-                                    .catch(console.error)
-                        }>
+                        onClick={() =>
+                            disconnect(client, connectedSession, () => setConnectedSession(undefined)).catch(
+                                console.error
+                            )
+                        }
+                    >
                         Disconnect
                     </Button>
                 </>

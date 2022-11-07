@@ -1,7 +1,7 @@
-import {Buffer} from 'buffer/';
-import {microCcdToCcdString} from "./amount";
-import {Info} from "./Contract";
-import {State} from "./Piggybank";
+import { Buffer } from 'buffer/';
+import { microCcdToCcdString } from './amount';
+import { Info } from './Contract';
+import { State } from './Piggybank';
 
 export function decodeByte(buffer: Buffer, offset: number) {
     return [buffer.readUInt8(offset), offset + 1];

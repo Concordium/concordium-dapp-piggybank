@@ -1,7 +1,7 @@
-import {err, ok, Result} from "neverthrow";
-import {AccountTransactionPayload, GtuAmount, toBuffer} from "@concordium/web-sdk";
-import {Info} from "./Contract";
-import {MAX_CONTRACT_EXECUTION_ENERGY} from "./config";
+import { err, ok, Result } from 'neverthrow';
+import { AccountTransactionPayload, GtuAmount, toBuffer } from '@concordium/web-sdk';
+import { Info } from './Contract';
+import { MAX_CONTRACT_EXECUTION_ENERGY } from './config';
 
 export function resultFromTruthy<T, E = string>(value: T | undefined, msg: E): Result<T, E> {
     if (value) {
@@ -11,13 +11,14 @@ export function resultFromTruthy<T, E = string>(value: T | undefined, msg: E): R
 }
 
 export function resultFromTruthyResult<T, E = string>(value: Result<T, E> | undefined, msg: E): Result<T, E> {
-    return resultFromTruthy(value, msg).andThen(r => r);
+    return resultFromTruthy(value, msg).andThen((r) => r);
 }
 
 export function contractUpdatePayload(amount: GtuAmount, contract: Info, method: string) {
     return {
         amount,
-        contractAddress: { // DEPRECATED
+        contractAddress: {
+            // DEPRECATED
             index: contract.index,
             subindex: BigInt(0),
         },
@@ -27,8 +28,8 @@ export function contractUpdatePayload(amount: GtuAmount, contract: Info, method:
         },
         receiveName: `${contract.name}.${method}`,
         maxContractExecutionEnergy: MAX_CONTRACT_EXECUTION_ENERGY,
-        message: toBuffer(""),
-        parameter: toBuffer(""), // DEPRECATED
+        message: toBuffer(''),
+        parameter: toBuffer(''), // DEPRECATED
     };
 }
 
@@ -37,11 +38,11 @@ export function accountTransactionPayloadToJson(data: AccountTransactionPayload)
         if (value instanceof GtuAmount) {
             return value.microGtuAmount.toString();
         }
-        if (value?.type === "Buffer") {
+        if (value?.type === 'Buffer') {
             // Buffer has already been transformed by its 'toJSON' method.
-            return toBuffer(value.data).toString("hex");
+            return toBuffer(value.data).toString('hex');
         }
-        if (typeof value === "bigint") {
+        if (typeof value === 'bigint') {
             return Number(value);
         }
         return value;
