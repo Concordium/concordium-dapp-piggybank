@@ -1,2 +1,5 @@
+*ignore
+Dockerfile
+docker-compose.yaml
 /build
 /node_modules

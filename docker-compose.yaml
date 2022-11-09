@@ -1,0 +1,7 @@
+version: "3"
+services:
+  piggybank:
+    image: ${PIGGYBANK_IMAGE-piggybank:test}
+    build: .
+    ports:
+    - "${PIGGYBANK_PORT-8080}:80"
