@@ -93,7 +93,7 @@ export async function signAndSendTransaction(
         })) as SignAndSendTransactionResult;
         return hash;
     } catch (e) {
-        if (isSignAndSendTransactionError(e) && e.code === 5000) {
+        if (isSignAndSendTransactionError(e) && e.code === 500) {
             throw new Error('transaction rejected in wallet');
         }
         throw e;
