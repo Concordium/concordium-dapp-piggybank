@@ -1,30 +1,55 @@
-# Getting Started with Create React App
+# Piggy Bank Web Application
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Example dApp for showcasing how to integrate with a smart contract on the Concordium blockchain.
+The application supports integration with the [Browser Wallet](https://github.com/Concordium/concordium-browser-wallet/)
+and with the Mobile Wallets via Wallet Connect.
 
-## Available Scripts
+The project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-In the project directory, you can run:
+## Install
 
-### `yarn start`
+Run `yarn` in the root of the project.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Run
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+Run the app in development mode with
 
-### `yarn test`
+```shell
+yarn start
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+This spins up a server which serves the app on [http://localhost:3000](http://localhost:3000).
 
-### `yarn build`
+Linting errors will appear in the console.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Changes to the source code will cause the page to refresh automatically.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Build
+
+Build the app for production using
+
+```shell
+yarn build
+```
+
+This will drop an optimized and minified bundle in the `build` folder that is ready to be deployed.
 
 See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+
+### Docker
+
+The project includes a dockerfile for building the app for production and running it in a container.
+The default build image `node:16-slim` may be overridden using build arg `build_image`.
+
+The easiest way to build and run the app is with Docker Compose:
+
+```shell
+docker-compose up --build
+```
+
+This command will build the app with default settings and deploy it in a HTTPd server container on running on port 8080 (by default).
+
+The Compose spec is parameterized as follows:
+
+- `PIGGYBANK_IMAGE` (default: `piggybank:test`): Image to build and/or start. Remove the `--build` flag to start an existing image without building it.
+- `PIGGYBANK_PORT` (default: `8080`): Port to run the server on.
