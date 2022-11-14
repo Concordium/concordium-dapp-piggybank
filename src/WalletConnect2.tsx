@@ -17,7 +17,7 @@ async function connect(client: SignClient, setConnectedSession: (session: Sessio
     try {
         const { uri, approval } = await client.connect({
             requiredNamespaces: {
-                ccd: {
+                [WALLET_CONNECT_SESSION_NAMESPACE]: {
                     methods: ['sign_and_send_transaction'],
                     chains: [CHAIN_ID],
                     events: ['chain_changed', 'accounts_changed'],
