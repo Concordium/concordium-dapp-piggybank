@@ -68,7 +68,7 @@ export default function BrowserWallet(props: Props) {
                         Connected to account <code>{connectedAccount}</code>.
                     </p>
                     <p>
-                        The wallet currently only exposes the %quot;most recently selected%quot; connected account, even
+                        The wallet currently only exposes the &quot;most recently selected&quot; connected account, even
                         if more than one is actually connected. Select and disconnect accounts through the wallet.
                     </p>
                 </Alert>
