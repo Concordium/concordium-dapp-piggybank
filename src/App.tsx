@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Col, Container, Row, Spinner } from 'react-bootstrap';
 import { GtuAmount, HttpProvider, JsonRpcClient } from '@concordium/web-sdk';
 import { Result, ResultAsync } from 'neverthrow';
-import { detectConcordiumProvider, WalletApi } from '@concordium/browser-wallet-api-helpers';
 import SignClient from '@walletconnect/sign-client';
 import { SessionTypes } from '@walletconnect/types';
 import { ArrowRepeat } from 'react-bootstrap-icons';
@@ -17,20 +16,21 @@ import {
     ZERO_AMOUNT,
 } from './config';
 import WalletConnect2, { resolveAccount, signAndSendTransaction, trySend } from './WalletConnect2';
-import BrowserWallet, { deposit, smash, trySendTransaction, wrapPromise } from './BrowserWallet';
 import Piggybank, { refreshPiggybankState, State } from './Piggybank';
 import { resultFromTruthy } from './util';
 
 const rpc = new JsonRpcClient(new HttpProvider(JSON_RPC_URL));
 
-type Wallet = 'browserwallet' | 'walletconnect2';
+export function wrapPromise<C, S>(send: (client: C, session: S, contract: Info) => Promise<string>) {
+    return (client: C, session: S, contract: Info) =>
+        ResultAsync.fromPromise(send(client, session, contract), (e) => (e as Error).message);
+}
 
 function refreshContract(index: bigint, setContract: React.Dispatch<Info | undefined>) {
     refresh(rpc, index).then(setContract).catch(console.error);
 }
 
 export default function App() {
-    const [wallet, setWallet] = useState<Wallet>();
     const [contract, setContract] = useState<Info>();
 
     // Piggybank state is duplicated in Contract component. State is redundantly refreshed after selecting a new contract.
@@ -45,40 +45,12 @@ export default function App() {
     useEffect(() => refreshContract(DEFAULT_CONTRACT_INDEX, setContract), []);
 
     // Wallet clients: React only manages their existence, not their internal state.
-    const [browserwalletClient, setBrowserwalletClient] = useState<Result<WalletApi, string>>();
     const [walletconnect2Client, setWalletconnect2Client] = useState<Result<SignClient, string>>();
 
     // Wallet state.
-    const [browserwalletConnectedAccount, setBrowserwalletConnectedAccount] = useState<string>();
     const [walletconnect2ConnectedSession, setWalletconnect2ConnectedSession] = useState<SessionTypes.Struct>();
     const [walletconnect2ConnectionError, setWalletconnect2ConnectionError] = useState<string>();
 
-    // Attempt to initialize Browser Wallet Client.
-    useEffect(() => {
-        ResultAsync.fromPromise(
-            detectConcordiumProvider().then((client) => {
-                // Listen for relevant events from the wallet.
-                client.on('accountChanged', (account) => {
-                    // eslint-disable-next-line no-console
-                    console.debug('browserwallet event: accountChange', { account });
-                    setBrowserwalletConnectedAccount(account);
-                });
-                client.on('accountDisconnected', () => {
-                    // eslint-disable-next-line no-console
-                    console.debug('browserwallet event: accountDisconnected');
-                    client.getMostRecentlySelectedAccount().then(setBrowserwalletConnectedAccount);
-                });
-                client.on('chainChanged', (chain) => {
-                    // eslint-disable-next-line no-console
-                    console.debug('browserwallet event: chainChanged', { chain });
-                });
-                // Check if you are already connected
-                client.getMostRecentlySelectedAccount().then(setBrowserwalletConnectedAccount);
-                return client;
-            }),
-            () => 'browser wallet did not initialize in time' // promise rejects without message
-        ).then(setBrowserwalletClient);
-    }, []);
     // Attempt to initialize Wallet Connect Client.
     useEffect(() => {
         ResultAsync.fromPromise(
@@ -155,39 +127,19 @@ export default function App() {
 
     const canUpdate = useMemo(
         // TODO Give reason?
-        () => {
-            if (wallet === 'browserwallet') {
-                return Boolean(browserwalletConnectedAccount);
-            }
-            if (wallet === 'walletconnect2') {
-                return Boolean(walletconnect2ConnectedSession);
-            }
-            return false;
-        },
-        [wallet, browserwalletConnectedAccount, walletconnect2ConnectedSession]
+        () => Boolean(walletconnect2ConnectedSession),
+        [walletconnect2ConnectedSession]
     );
     // TODO Need an interface ('canSmash', 'handleSubmitDeposit', etc.) and a function for mapping from wallet to implementation.
     const canSmash = useMemo(() => {
-        if (wallet === 'browserwallet' && contract) {
-            return browserwalletConnectedAccount === contract.owner.address;
-        }
-        if (wallet === 'walletconnect2' && walletconnect2ConnectedSession && contract) {
+        if (walletconnect2ConnectedSession && contract) {
             return resolveAccount(walletconnect2ConnectedSession) === contract.owner.address;
         }
         return false;
-    }, [wallet, browserwalletConnectedAccount, walletconnect2ConnectedSession, contract]);
+    }, [walletconnect2ConnectedSession, contract]);
     const handleSubmitDeposit = useCallback(
         (amount: bigint) => {
-            if (wallet === 'browserwallet') {
-                trySendTransaction(
-                    browserwalletClient,
-                    browserwalletConnectedAccount,
-                    contract,
-                    wrapPromise((client, account, contract) =>
-                        deposit(client, new GtuAmount(amount), account, contract)
-                    )
-                );
-            } else if (wallet === 'walletconnect2' && rpc) {
+            if (rpc) {
                 trySend(
                     walletconnect2Client,
                     walletconnect2ConnectedSession,
@@ -214,19 +166,10 @@ export default function App() {
                 );
             }
         },
-        [
-            wallet,
-            browserwalletClient,
-            walletconnect2Client,
-            browserwalletConnectedAccount,
-            walletconnect2ConnectedSession,
-            contract,
-        ]
+        [walletconnect2Client, walletconnect2ConnectedSession, contract]
     );
     const handleSubmitSmash = useCallback(() => {
-        if (wallet === 'browserwallet') {
-            trySendTransaction(browserwalletClient, browserwalletConnectedAccount, contract, wrapPromise(smash));
-        } else if (wallet === 'walletconnect2' && rpc) {
+        if (rpc) {
             trySend(
                 walletconnect2Client,
                 walletconnect2ConnectedSession,
@@ -250,14 +193,7 @@ export default function App() {
                 )
             );
         }
-    }, [
-        wallet,
-        browserwalletClient,
-        browserwalletConnectedAccount,
-        walletconnect2Client,
-        walletconnect2ConnectedSession,
-        contract,
-    ]);
+    }, [walletconnect2Client, walletconnect2ConnectedSession, contract]);
     return (
         <Container>
             <Row>
@@ -269,69 +205,22 @@ export default function App() {
                 </Col>
             </Row>
             <hr />
-            <Row className="mb-3">
-                <Col>
-                    <Button
-                        className="w-100"
-                        variant={wallet === 'browserwallet' ? 'dark' : 'light'}
-                        onClick={() => (wallet === 'browserwallet' ? setWallet(undefined) : setWallet('browserwallet'))}
-                    >
-                        Use Browser Wallet
-                    </Button>
-                </Col>
-                <Col>
-                    <Button
-                        className="w-100"
-                        variant={wallet === 'walletconnect2' ? 'dark' : 'light'}
-                        onClick={() =>
-                            wallet === 'walletconnect2' ? setWallet(undefined) : setWallet('walletconnect2')
-                        }
-                    >
-                        Use WalletConnect v2
-                    </Button>
-                </Col>
-            </Row>
             <Row>
                 <Col>
-                    <>
-                        {wallet === 'browserwallet' && (
-                            <>
-                                {!browserwalletClient && <Spinner animation="border" />}
-                                {browserwalletClient?.match(
-                                    (c) => (
-                                        <BrowserWallet
-                                            client={c}
-                                            connectedAccount={browserwalletConnectedAccount}
-                                            setConnectedAccount={setBrowserwalletConnectedAccount}
-                                        />
-                                    ),
-                                    (e) => (
-                                        <Alert variant="danger">
-                                            Browser Wallet is not available: {e} (is the extension installed?).
-                                        </Alert>
-                                    )
-                                )}
-                            </>
-                        )}
-                        {wallet === 'walletconnect2' && (
-                            <>
-                                {!walletconnect2Client && <Spinner animation="border" />}
-                                {walletconnect2Client?.match(
-                                    (c) => (
-                                        <WalletConnect2
-                                            client={c}
-                                            connectedSession={walletconnect2ConnectedSession}
-                                            setConnectedSession={setWalletconnect2ConnectedSession}
-                                            connectionError={walletconnect2ConnectionError}
-                                        />
-                                    ),
-                                    (e) => (
-                                        <Alert variant="danger">Wallet Connect is not available: {e}.</Alert>
-                                    )
-                                )}
-                            </>
-                        )}
-                    </>
+                    {!walletconnect2Client && <Spinner animation="border" />}
+                    {walletconnect2Client?.match(
+                        (c) => (
+                            <WalletConnect2
+                                client={c}
+                                connectedSession={walletconnect2ConnectedSession}
+                                setConnectedSession={setWalletconnect2ConnectedSession}
+                                connectionError={walletconnect2ConnectionError}
+                            />
+                        ),
+                        (e) => (
+                            <Alert variant="danger">Wallet Connect is not available: {e}.</Alert>
+                        )
+                    )}
                 </Col>
             </Row>
             <hr />
