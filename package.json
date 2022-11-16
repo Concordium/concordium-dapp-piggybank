@@ -1,6 +1,6 @@
 {
     "name": "piggybank",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "private": true,
     "dependencies": {
         "@concordium/browser-wallet-api-helpers": "^0.2.0",
