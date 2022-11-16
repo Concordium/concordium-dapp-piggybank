@@ -33,17 +33,36 @@
         "prepare": "husky install"
     },
     "lint-staged": {
-        "*.{js,jsx,ts,tsx}": ["eslint --cache --fix --max-warnings 0"],
-        "{*.json,.{eslintrc,prettierrc,stylelintrc}}": ["prettier --ignore-path .eslintignore --parser json --write"],
-        "*.{css,scss}": ["stylelint --ignore-path .eslintignore --fix"],
-        "*.{html,md,yml}": ["prettier --ignore-path .eslintignore --single-quote --write"]
+        "*.{js,jsx,ts,tsx}": [
+            "eslint --cache --fix --max-warnings 0"
+        ],
+        "{*.json,.{eslintrc,prettierrc,stylelintrc}}": [
+            "prettier --ignore-path .eslintignore --parser json --write"
+        ],
+        "*.{css,scss}": [
+            "stylelint --ignore-path .eslintignore --fix"
+        ],
+        "*.{html,md,yml}": [
+            "prettier --ignore-path .eslintignore --single-quote --write"
+        ]
     },
     "eslintConfig": {
-        "extends": ["react-app", "react-app/jest"]
+        "extends": [
+            "react-app",
+            "react-app/jest"
+        ]
     },
     "browserslist": {
-        "production": [">0.5%", "not dead", "not op_mini all"],
-        "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
+        "production": [
+            ">0.5%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
     },
     "devDependencies": {
         "eslint": "8.22.0",
