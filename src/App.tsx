@@ -94,7 +94,7 @@ export default function App() {
                 // Register event handlers (from official docs).
                 client.on('session_event', (event) => {
                     // Handle session events, such as "chainChanged", "accountsChanged", etc.
-                    console.debug('Wallet Connect event: session_event', { event });
+                    console.info('Wallet Connect event: session_event', { event });
                 });
                 client.on('session_update', ({ topic, params }) => {
                     const { namespaces } = params;
@@ -102,16 +102,17 @@ export default function App() {
                     // Overwrite the `namespaces` of the existing session with the incoming one.
                     const updatedSession = { ...session, namespaces };
                     // Integrate the updated session state into your dapp state.
-                    console.debug('Wallet Connect event: session_update', { updatedSession });
+                    console.info('Wallet Connect event: session_update', { updatedSession });
                 });
                 client.on('session_delete', () => {
                     // Session was deleted -> reset the dapp state, clean up from user session, etc.
                     console.debug('Wallet Connect event: session_delete');
+                    setWalletconnect2ConnectedSession(undefined);
                 });
                 return client;
             }),
             (e) => {
-                console.debug('Wallet Connect: init error', e);
+                console.error('Wallet Connect: init error', e);
                 return (e as Error).message;
             }
         ).then(setWalletconnect2Client);
