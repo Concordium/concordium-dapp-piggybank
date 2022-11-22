@@ -29,6 +29,15 @@ function refreshContract(index: bigint, setContract: React.Dispatch<Info | undef
     refresh(rpc, index).then(setContract).catch(console.error);
 }
 
+function clearLocalStorage() {
+    for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('wc@2:')) {
+            localStorage.removeItem(key);
+        }
+    }
+}
+
 export default function App() {
     const [wallet, setWallet] = useState<Wallet>();
     const [contract, setContract] = useState<Info>();
@@ -47,6 +56,7 @@ export default function App() {
     // Wallet clients: React only manages their existence, not their internal state.
     const [browserwalletClient, setBrowserwalletClient] = useState<Result<WalletApi, string>>();
     const [walletconnect2Client, setWalletconnect2Client] = useState<Result<SignClient, string>>();
+    const [walletconnect2ClientInitTimeMs, setWalletconnect2ClientInitTimeMs] = useState<number>();
 
     // Wallet state.
     const [browserwalletConnectedAccount, setBrowserwalletConnectedAccount] = useState<string>();
@@ -81,6 +91,7 @@ export default function App() {
     }, []);
     // Attempt to initialize Wallet Connect Client.
     useEffect(() => {
+        const initStart = Date.now();
         ResultAsync.fromPromise(
             SignClient.init({
                 projectId: WALLET_CONNECT_PROJECT_ID,
@@ -91,6 +102,17 @@ export default function App() {
                     icons: ['https://walletconnect.com/walletconnect-logo.png'],
                 },
             }).then((client) => {
+                setWalletconnect2ClientInitTimeMs(Date.now() - initStart);
+
+                client.core.pairing.events.on('pairing_ping', ({ id, topic }) => {
+                    console.info('Wallet Connect event: pairing_ping', { id, topic });
+                });
+                client.core.pairing.events.on('pairing_delete', ({ id, topic }) => {
+                    console.info('Wallet Connect event: pairing_delete', { id, topic });
+                });
+                client.core.pairing.events.on('pairing_expire', ({ id, topic }) => {
+                    console.info('Wallet Connect event: pairing_expire', { id, topic });
+                });
                 // Register event handlers (from official docs).
                 client.on('session_event', (event) => {
                     // Handle session events, such as "chainChanged", "accountsChanged", etc.
@@ -316,6 +338,14 @@ export default function App() {
                         )}
                         {wallet === 'walletconnect2' && (
                             <>
+                                {walletconnect2ClientInitTimeMs && (
+                                    <p>
+                                        Wallet Connect Sign Client initialized in {walletconnect2ClientInitTimeMs} ms.
+                                        <button type="button" className="btn btn-link p-0" onClick={clearLocalStorage}>
+                                            Clear localstorage
+                                        </button>
+                                    </p>
+                                )}
                                 {!walletconnect2Client && <Spinner animation="border" />}
                                 {walletconnect2Client?.match(
                                     (c) => (
@@ -348,7 +378,7 @@ export default function App() {
                                 <Alert variant="light" className="d-flex">
                                     <div className="me-auto p-2">
                                         Owned by{' '}
-                                        <code>
+                                        <code title={state.ownerAddress}>
                                             {state.ownerAddress.slice(0, 4)}...{state.ownerAddress.slice(-4)}
                                         </code>
                                         . As of {state.queryTime.toLocaleTimeString()} it contains{' '}
