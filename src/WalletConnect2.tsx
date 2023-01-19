@@ -1,132 +1,60 @@
-import SignClient from '@walletconnect/sign-client';
 import { Alert, Button } from 'react-bootstrap';
-import QRCodeModal from '@walletconnect/qrcode-modal';
-import { SessionTypes } from '@walletconnect/types';
-import { Result, ResultAsync } from 'neverthrow';
-import { GtuAmount, JsonRpcClient } from '@concordium/web-sdk';
-import { Info } from './Contract';
-import {
-    contractUpdatePayload,
-    resultFromTruthy,
-    resultFromTruthyResult,
-    accountTransactionPayloadToJson,
-} from './util';
-import { CHAIN_ID, WALLET_CONNECT_SESSION_NAMESPACE } from './config';
-
-async function connect(client: SignClient, setConnectedSession: (session: SessionTypes.Struct) => void) {
-    try {
-        const { uri, approval } = await client.connect({
-            requiredNamespaces: {
-                [WALLET_CONNECT_SESSION_NAMESPACE]: {
-                    methods: ['sign_and_send_transaction'],
-                    chains: [CHAIN_ID],
-                    events: ['chain_changed', 'accounts_changed'],
-                },
-            },
-        });
-
-        // Open QRCode modal if a URI was returned (i.e. we're not connecting an existing pairing).
-        if (uri) {
-            console.log('opening QR code modal');
-            QRCodeModal.open(uri, () => {
-                console.debug('QR code modal closed');
-            });
-        }
-
-        // Await session approval from the wallet.
-        const session = await approval();
-        setConnectedSession(session);
-    } finally {
-        // Close the QRCode modal in case it was open.
-        QRCodeModal.close();
-    }
-}
-
-async function disconnect(client: SignClient, session: SessionTypes.Struct, clearConnectedSession: () => void) {
-    const { topic } = session;
-    const reason = { code: 1337, message: 'something something reason' };
-    await client.disconnect({ topic, reason });
-    clearConnectedSession();
-}
-
-export function resolveAccount(session: SessionTypes.Struct) {
-    const fullAddress = session.namespaces[WALLET_CONNECT_SESSION_NAMESPACE].accounts[0];
-    return fullAddress.substring(fullAddress.lastIndexOf(':') + 1);
-}
-
-interface SignAndSendTransactionResult {
-    hash: string;
-}
-
-interface SignAndSendTransactionError {
-    code: number;
-    message: string;
-}
-
-function isSignAndSendTransactionError(obj: any): obj is SignAndSendTransactionError {
-    return 'code' in obj && 'message' in obj;
-}
-
-export async function signAndSendTransaction(
-    signClient: SignClient,
-    session: SessionTypes.Struct,
-    rpcClient: JsonRpcClient,
-    chainId: string,
-    amount: GtuAmount,
-    sender: string,
-    contract: Info,
-    method: string
-) {
-    const params = {
-        type: 'Update', // TODO replace with name from Web SDK once it's been updated
-        sender,
-        payload: accountTransactionPayloadToJson(contractUpdatePayload(amount, contract, method)),
-    };
-    try {
-        const { hash } = (await signClient.request({
-            topic: session.topic,
-            request: {
-                method: 'sign_and_send_transaction',
-                params,
-            },
-            chainId,
-        })) as SignAndSendTransactionResult;
-        return hash;
-    } catch (e) {
-        if (isSignAndSendTransactionError(e) && e.code === 500) {
-            throw new Error('transaction rejected in wallet');
-        }
-        throw e;
-    }
-}
-
-export function trySend(
-    client: Result<SignClient, string> | undefined,
-    session: SessionTypes.Struct | undefined,
-    contract: Info | undefined,
-    send: (client: SignClient, session: SessionTypes.Struct, contractInfo: Info) => ResultAsync<string, string>
-) {
-    return Result.combine<[Result<SignClient, string>, Result<SessionTypes.Struct, string>, Result<Info, string>]>([
-        resultFromTruthyResult(client, 'not initialized'),
-        resultFromTruthy(session, 'no session connected'),
-        resultFromTruthy(contract, 'no contract'),
-    ]).asyncAndThen(([c, account, contractInfo]) => send(c, account, contractInfo));
-}
+import { WalletConnectConnection, WalletConnectConnector, WalletConnection } from '@concordium/react-components';
+import { useEffect, useState } from 'react';
+import { PING_INTERVAL_MS } from './config';
 
 interface Props {
-    client: SignClient;
-    connectedSession?: SessionTypes.Struct;
-    setConnectedSession: (session: SessionTypes.Struct | undefined) => void;
-    connectionError: string | undefined;
+    connector: WalletConnectConnector;
+    connection: WalletConnection | undefined;
+    connectedAccount: string | undefined;
+    setActiveConnection: (c: WalletConnection | undefined) => void;
 }
 
 export default function WalletConnect2(props: Props) {
-    const { client, connectedSession, setConnectedSession, connectionError } = props;
+    const { connector, connection, connectedAccount, setActiveConnection } = props;
+    const [connectionError, setConnectionError] = useState('');
+    const [pingError, setPingError] = useState('');
+
+    const connectedSession = connection instanceof WalletConnectConnection && connection.session;
+
+    // Ping Wallet Connect periodically.
+    useEffect(() => {
+        if (connector && connectedSession) {
+            console.log('setting up ping loop');
+            const interval = setInterval(() => {
+                // console.debug("attempting to ping");
+                connector.client
+                    .ping({ topic: connectedSession.topic })
+                    .then(() => console.debug('ping successful'))
+                    .catch(setPingError);
+            }, PING_INTERVAL_MS);
+            return () => {
+                console.debug('tearing down ping loop');
+                clearInterval(interval);
+            };
+        }
+        return undefined;
+    }, [connector, connectedSession]);
 
     return (
         <>
+            {connectionError && <Alert variant="danger">Connection error: {connectionError}</Alert>}
+            {pingError && <Alert variant="danger">Ping error: {pingError}</Alert>}
+            {connectedAccount && (
+                <Alert variant="success">
+                    <p>
+                        Connected to account <code>{connectedAccount}</code>.
+                    </p>
+                    <p>
+                        The wallet currently only exposes the &quot;most recently selected&quot; connected account, even
+                        if more than one is actually connected. Select and disconnect accounts through the wallet.
+                    </p>
+                </Alert>
+            )}
             {!connectedSession && (
-                <Button onClick={() => connect(client, setConnectedSession).catch(console.error)}>Connect</Button>
+                <Button onClick={() => connector.connect().then(setActiveConnection).catch(setConnectionError)}>
+                    Connect
+                </Button>
             )}
             {connectedSession && (
                 <>
@@ -183,16 +111,7 @@ export default function WalletConnect2(props: Props) {
                             <li>Peer metadata description: {connectedSession.peer.metadata.description}</li>
                         </ul>
                     </Alert>
-                    {connectionError && <Alert variant="danger">Ping error: {connectionError}</Alert>}
-                    <Button
-                        onClick={() =>
-                            disconnect(client, connectedSession, () => setConnectedSession(undefined)).catch(
-                                console.error
-                            )
-                        }
-                    >
-                        Disconnect
-                    </Button>
+                    <Button onClick={() => connection?.disconnect().catch(setConnectionError)}>Disconnect</Button>
                 </>
             )}
         </>
