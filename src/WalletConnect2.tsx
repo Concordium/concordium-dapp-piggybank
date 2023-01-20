@@ -26,7 +26,7 @@ export default function WalletConnect2(props: Props) {
                 connector.client
                     .ping({ topic: connectedSession.topic })
                     .then(() => console.debug('ping successful'))
-                    .catch(setPingError);
+                    .catch((e) => setPingError((e as Error).message));
             }, PING_INTERVAL_MS);
             return () => {
                 console.debug('tearing down ping loop');
@@ -52,7 +52,14 @@ export default function WalletConnect2(props: Props) {
                 </Alert>
             )}
             {!connectedSession && (
-                <Button onClick={() => connector.connect().then(setActiveConnection).catch(setConnectionError)}>
+                <Button
+                    onClick={() =>
+                        connector
+                            .connect()
+                            .then(setActiveConnection)
+                            .catch((e) => setConnectionError((e as Error).message))
+                    }
+                >
                     Connect
                 </Button>
             )}
