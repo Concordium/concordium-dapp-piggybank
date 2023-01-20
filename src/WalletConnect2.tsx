@@ -22,10 +22,8 @@ export default function WalletConnect2(props: Props) {
         if (connector && connectedSession) {
             console.log('setting up ping loop');
             const interval = setInterval(() => {
-                // console.debug("attempting to ping");
                 connector.client
                     .ping({ topic: connectedSession.topic })
-                    .then(() => console.debug('ping successful'))
                     .catch((e) => setPingError((e as Error).message));
             }, PING_INTERVAL_MS);
             return () => {
