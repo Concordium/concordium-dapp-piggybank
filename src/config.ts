@@ -1,8 +1,8 @@
 import { CcdAmount } from '@concordium/web-sdk';
 import {
     BrowserWalletConnector,
-    ephemeralConnectorType,
     Network,
+    persistentConnectorType,
     WalletConnectConnector,
 } from '@concordium/react-components';
 import { SignClientTypes } from '@walletconnect/types';
@@ -32,8 +32,8 @@ const WALLET_CONNECT_OPTS: SignClientTypes.Options = {
     },
 };
 
-export const BROWSER_WALLET = ephemeralConnectorType(BrowserWalletConnector.create);
-export const WALLET_CONNECT = ephemeralConnectorType((n, d) =>
+export const BROWSER_WALLET = persistentConnectorType(BrowserWalletConnector.create);
+export const WALLET_CONNECT = persistentConnectorType((n, d) =>
     WalletConnectConnector.create(WALLET_CONNECT_OPTS, d, n)
 ); // temporary!
 // export const WALLET_CONNECT = ephemeralConnectorType(WalletConnectConnector.create.bind(this, WALLET_CONNECT_OPTS));

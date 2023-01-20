@@ -60,7 +60,7 @@ interface Props {
 
 export default function Piggybank(props: Props) {
     const { submitDeposit, submitSmash, canUpdate, canSmash } = props;
-    const [depositInput, setDepositInput] = useState<string>('');
+    const [depositInput, setDepositInput] = useState('');
     const [depositAmount, setDepositAmount] = useState<bigint>();
     const [validationError, setValidationError] = useState<string>();
 

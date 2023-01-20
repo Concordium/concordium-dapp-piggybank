@@ -33,14 +33,10 @@ export default function App(props: WalletConnectionProps) {
     // Piggybank state is duplicated in Contract component. State is redundantly refreshed after selecting a new contract.
     const [piggybankState, setPiggybankState] = useState<Result<State, string>>();
     useEffect(() => {
-        if (activeConnection) {
-            resultFromTruthy(contract, 'no contract selected')
-                .asyncAndThen((c) =>
-                    ResultAsync.fromPromise(refreshPiggybankState(rpc, c), (e) => (e as Error).message)
-                )
-                .then(setPiggybankState);
-        }
-    }, [activeConnection, contract]);
+        resultFromTruthy(contract, 'no contract selected')
+            .asyncAndThen((c) => ResultAsync.fromPromise(refreshPiggybankState(rpc, c), (e) => (e as Error).message))
+            .then(setPiggybankState);
+    }, [contract]);
 
     // Select default contract.
     useEffect(() => refreshContract(DEFAULT_CONTRACT_INDEX, setContract), []);
@@ -129,8 +125,10 @@ export default function App(props: WalletConnectionProps) {
             <Row>
                 <Col>
                     <>
-                        {activeConnectorType && !activeConnector && <Spinner animation="border" />}
                         {activeConnectorError && <Alert variant="danger">{activeConnectorError}</Alert>}
+                        {!activeConnectorError && activeConnectorType && !activeConnector && (
+                            <Spinner animation="border" />
+                        )}
                         {activeConnector instanceof BrowserWalletConnector && (
                             <BrowserWallet
                                 connector={activeConnector}

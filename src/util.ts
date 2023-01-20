@@ -1,11 +1,5 @@
 import { err, ok, Result } from 'neverthrow';
-import {
-    AccountTransactionPayload,
-    AccountTransactionType,
-    CcdAmount,
-    toBuffer,
-    UpdateContractPayload,
-} from '@concordium/web-sdk';
+import { AccountTransactionPayload, AccountTransactionType, CcdAmount, toBuffer } from '@concordium/web-sdk';
 import { WalletConnection } from '@concordium/react-components';
 import { Info } from './Contract';
 import { MAX_CONTRACT_EXECUTION_ENERGY } from './config';
@@ -17,7 +11,7 @@ export function resultFromTruthy<T, E = string>(value: T | undefined, msg: E): R
     return err(msg);
 }
 
-export function contractUpdatePayload(amount: CcdAmount, contract: Info, method: string): UpdateContractPayload {
+export function contractUpdatePayload(amount: CcdAmount, contract: Info, method: string) {
     return {
         amount,
         address: {
@@ -26,7 +20,6 @@ export function contractUpdatePayload(amount: CcdAmount, contract: Info, method:
         },
         receiveName: `${contract.name}.${method}`,
         maxContractExecutionEnergy: MAX_CONTRACT_EXECUTION_ENERGY,
-        message: toBuffer(''),
     };
 }
 
@@ -47,7 +40,9 @@ export async function deposit(connection: WalletConnection, amount: CcdAmount, a
     return connection.signAndSendTransaction(
         account,
         AccountTransactionType.Update,
-        contractUpdatePayload(amount, contract, 'insert')
+        contractUpdatePayload(amount, contract, 'insert'),
+        {},
+        ''
     );
 }
 
@@ -55,6 +50,8 @@ export async function smash(connection: WalletConnection, account: string, contr
     return connection.signAndSendTransaction(
         account,
         AccountTransactionType.Update,
-        contractUpdatePayload(new CcdAmount(BigInt(0)), contract, 'smash')
+        contractUpdatePayload(new CcdAmount(BigInt(0)), contract, 'smash'),
+        {},
+        ''
     );
 }

@@ -70,8 +70,8 @@ export default function WalletConnect2(props: Props) {
                             <li>
                                 Namespaces:
                                 <ul>
-                                    {Object.entries(connectedSession.namespaces).map(([key, ns]) => {
-                                        return (
+                                    {connectedSession.namespaces &&
+                                        Object.entries(connectedSession.namespaces).map(([key, ns]) => (
                                             <li key={key}>
                                                 Key: {key}
                                                 Accounts: {ns.accounts.join(', ')}
@@ -79,15 +79,14 @@ export default function WalletConnect2(props: Props) {
                                                 Events: {ns.events.join(', ')}
                                                 Extension: {JSON.stringify(ns.extension)}
                                             </li>
-                                        );
-                                    })}
+                                        ))}
                                 </ul>
                             </li>
                             <li>
                                 Required namespaces:
                                 <ul>
-                                    {Object.entries(connectedSession.requiredNamespaces).map(([key, ns]) => {
-                                        return (
+                                    {connectedSession.requiredNamespaces &&
+                                        Object.entries(connectedSession.requiredNamespaces).map(([key, ns]) => (
                                             <li key={key}>
                                                 Key: {key}
                                                 Chains: {ns.chains.join(', ')}
@@ -95,8 +94,7 @@ export default function WalletConnect2(props: Props) {
                                                 Events: {ns.events.join(', ')}
                                                 Extension: {JSON.stringify(ns.extension)}
                                             </li>
-                                        );
-                                    })}
+                                        ))}
                                 </ul>
                             </li>
                             <li>Self public key: {connectedSession.self.publicKey}</li>
