@@ -14,7 +14,7 @@ export default function BrowserWallet(props: Props) {
 
     return (
         <>
-            {connectionError && <Alert variant="danger"> {connectionError} </Alert>}
+            {connectionError && <Alert variant="danger">{connectionError}</Alert>}
             {connectedAccount && (
                 <Alert variant="success">
                     <p>
@@ -29,7 +29,14 @@ export default function BrowserWallet(props: Props) {
             {!connectedAccount && (
                 <>
                     <p>No wallet connection</p>
-                    <Button onClick={() => connector.connect().then(setActiveConnection).catch(setConnectionError)}>
+                    <Button
+                        onClick={() =>
+                            connector
+                                .connect()
+                                .then(setActiveConnection)
+                                .catch((e) => setConnectionError((e as Error).message))
+                        }
+                    >
                         Connect
                     </Button>
                 </>
