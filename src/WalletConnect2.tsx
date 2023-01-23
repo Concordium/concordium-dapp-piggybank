@@ -43,10 +43,6 @@ export default function WalletConnect2(props: Props) {
                     <p>
                         Connected to account <code>{connectedAccount}</code>.
                     </p>
-                    <p>
-                        The wallet currently only exposes the &quot;most recently selected&quot; connected account, even
-                        if more than one is actually connected. Select and disconnect accounts through the wallet.
-                    </p>
                 </Alert>
             )}
             {!connectedSession && (
@@ -114,7 +110,11 @@ export default function WalletConnect2(props: Props) {
                             <li>Peer metadata description: {connectedSession.peer.metadata.description}</li>
                         </ul>
                     </Alert>
-                    <Button onClick={() => connection?.disconnect().catch(setConnectionError)}>Disconnect</Button>
+                    <Button
+                        onClick={() => connection?.disconnect().catch((e) => setConnectionError((e as Error).message))}
+                    >
+                        Disconnect
+                    </Button>
                 </>
             )}
         </>
