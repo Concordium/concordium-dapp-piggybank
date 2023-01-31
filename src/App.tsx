@@ -4,7 +4,13 @@ import { Alert, Button, Col, Container, Row, Spinner } from 'react-bootstrap';
 import { CcdAmount, HttpProvider, JsonRpcClient } from '@concordium/web-sdk';
 import { Result, ResultAsync } from 'neverthrow';
 import { ArrowRepeat } from 'react-bootstrap-icons';
-import { BrowserWalletConnector, WalletConnectConnector, WalletConnectionProps } from '@concordium/react-components';
+import {
+    BrowserWalletConnector,
+    useConnect,
+    useConnection,
+    WalletConnectConnector,
+    WalletConnectionProps,
+} from '@concordium/react-components';
 import { ContractManager, Info, refresh } from './Contract';
 import { BROWSER_WALLET, DEFAULT_CONTRACT_INDEX, TESTNET, WALLET_CONNECT } from './config';
 import WalletConnect2 from './WalletConnect2';
@@ -23,11 +29,13 @@ export default function App(props: WalletConnectionProps) {
         activeConnectorType,
         setActiveConnectorType,
         activeConnector,
-        activeConnection,
-        setActiveConnection,
-        activeConnectedAccount,
         activeConnectorError,
+        connectedAccounts,
+        genesisHashes,
     } = props;
+    const { connection, setConnection, account } = useConnection(activeConnector, connectedAccounts, genesisHashes);
+    const { connect, isConnecting, connectionError } = useConnect(activeConnector, setConnection);
+
     const [contract, setContract] = useState<Info>();
 
     // Piggybank state is duplicated in Contract component. State is redundantly refreshed after selecting a new contract.
@@ -42,13 +50,13 @@ export default function App(props: WalletConnectionProps) {
     useEffect(() => refreshContract(DEFAULT_CONTRACT_INDEX, setContract), []);
 
     // TODO Need an interface ('canSmash', 'handleSubmitDeposit', etc.).
-    const canUpdate = Boolean(activeConnectedAccount);
-    const canSmash = canUpdate && activeConnectedAccount === contract?.owner.address;
+    const canUpdate = Boolean(account);
+    const canSmash = canUpdate && account === contract?.owner.address;
     const handleSubmitDeposit = useCallback(
         (amount: bigint) =>
             Result.combine([
-                resultFromTruthy(activeConnection, 'no connection initialized'),
-                resultFromTruthy(activeConnectedAccount, 'no account connected'),
+                resultFromTruthy(connection, 'no connection initialized'),
+                resultFromTruthy(account, 'no account connected'),
                 resultFromTruthy(contract, 'no contract'),
             ])
                 .asyncAndThen(([client, account, contract]) =>
@@ -65,13 +73,13 @@ export default function App(props: WalletConnectionProps) {
                     (txHash) => console.log('deposit transaction submitted', { hash: txHash }),
                     (e) => console.error('cannot submit deposit transaction', { error: e })
                 ),
-        [activeConnection, activeConnectedAccount, contract]
+        [connection, account, contract]
     );
     const handleSubmitSmash = useCallback(
         () =>
             Result.combine([
-                resultFromTruthy(activeConnection, 'no connection initialized'),
-                resultFromTruthy(activeConnectedAccount, 'no account connected'),
+                resultFromTruthy(connection, 'no connection initialized'),
+                resultFromTruthy(account, 'no account connected'),
                 resultFromTruthy(contract, 'no contract'),
             ])
                 .asyncAndThen(([client, account, contract]) =>
@@ -85,7 +93,7 @@ export default function App(props: WalletConnectionProps) {
                     (txHash) => console.log('smash transaction submitted', { hash: txHash }),
                     (e) => console.error('cannot submit smash transaction', { error: e })
                 ),
-        [activeConnection, activeConnectedAccount, contract]
+        [connection, account, contract]
     );
     return (
         <Container>
@@ -129,20 +137,17 @@ export default function App(props: WalletConnectionProps) {
                         {!activeConnectorError && activeConnectorType && !activeConnector && (
                             <Spinner animation="border" />
                         )}
-                        {activeConnector instanceof BrowserWalletConnector && (
-                            <BrowserWallet
-                                connector={activeConnector}
-                                connectedAccount={activeConnectedAccount}
-                                setActiveConnection={setActiveConnection}
-                            />
+                        {connectionError && <Alert variant="danger">Connection error: {connectionError}</Alert>}
+                        {activeConnector && !account && (
+                            <Button type="button" onClick={connect} disabled={isConnecting}>
+                                {isConnecting && 'Connecting...'}
+                                {!isConnecting && activeConnectorType === BROWSER_WALLET && 'Connect Browser Wallet'}
+                                {!isConnecting && activeConnectorType === WALLET_CONNECT && 'Connect Mobile Wallet'}
+                            </Button>
                         )}
+                        {activeConnector instanceof BrowserWalletConnector && <BrowserWallet account={account} />}
                         {activeConnector instanceof WalletConnectConnector && (
-                            <WalletConnect2
-                                connector={activeConnector}
-                                connection={activeConnection}
-                                connectedAccount={activeConnectedAccount}
-                                setActiveConnection={setActiveConnection}
-                            />
+                            <WalletConnect2 connection={connection} />
                         )}
                     </>
                 </Col>
