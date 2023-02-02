@@ -33,8 +33,19 @@ export default function App(props: WalletConnectionProps) {
         connectedAccounts,
         genesisHashes,
     } = props;
-    const { connection, setConnection, account } = useConnection(activeConnector, connectedAccounts, genesisHashes);
+    const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
     const { connect, isConnecting, connectionError } = useConnect(activeConnector, setConnection);
+
+    useEffect(() => {
+        setConnection(undefined);
+        if (activeConnector) {
+            // When changing connector, select the first of any existing connections.
+            const cs = activeConnector.getConnections();
+            if (cs.length) {
+                setConnection(cs[0]);
+            }
+        }
+    }, [activeConnector]);
 
     const [contract, setContract] = useState<Info>();
 
