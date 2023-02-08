@@ -34,10 +34,9 @@ export default function App(props: WalletConnectionProps) {
         genesisHashes,
     } = props;
     const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
-    const { connect, isConnecting, connectionError } = useConnect(activeConnector, setConnection);
+    const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
 
     useEffect(() => {
-        setConnection(undefined);
         if (activeConnector) {
             // When changing connector, select the first of any existing connections.
             const cs = activeConnector.getConnections();
@@ -45,6 +44,7 @@ export default function App(props: WalletConnectionProps) {
                 setConnection(cs[0]);
             }
         }
+        return () => setConnection(undefined);
     }, [activeConnector]);
 
     const [contract, setContract] = useState<Info>();
@@ -148,7 +148,7 @@ export default function App(props: WalletConnectionProps) {
                         {!activeConnectorError && activeConnectorType && !activeConnector && (
                             <Spinner animation="border" />
                         )}
-                        {connectionError && <Alert variant="danger">Connection error: {connectionError}</Alert>}
+                        {connectError && <Alert variant="danger">Connection error: {connectError}</Alert>}
                         {activeConnector && !account && (
                             <Button type="button" onClick={connect} disabled={isConnecting}>
                                 {isConnecting && 'Connecting...'}

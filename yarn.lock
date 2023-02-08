@@ -1102,20 +1102,22 @@
     json-bigint "^1.0.0"
     uuid "^8.3.2"
 
-"@concordium/react-components@../concordium-dapp-libraries/packages/react-components/":
-  version "0.1.0"
+"@concordium/react-components@^0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@concordium/react-components/-/react-components-0.2.0.tgz#9cd6f08b04b993838f6b0203ec00a25ef6fbef51"
+  integrity sha512-R4iaBEguF9ytn3yOzNaZBMiuDH10b2Aw5cEZ6HvuT6S67Uke2MjujqVUUwC2S+tEzLjsWxJZEclHpen+UzNVgA==
   dependencies:
-    "@concordium/wallet-connectors" "0.1.0"
+    "@concordium/wallet-connectors" "0.2.0"
 
 "@concordium/rust-bindings@0.9.0":
   version "0.9.0"
   resolved "https://registry.yarnpkg.com/@concordium/rust-bindings/-/rust-bindings-0.9.0.tgz#366904e278f0f1fe17b46793f6291fba2b59c97d"
   integrity sha512-LaYABqQH5j9FBZRnI296nHTN9/f4GveeisMtCm4LYXvA8E/YLhc7pxV3qbRqTevNcH8WcVmJhz6GK8b3lV5b7Q==
 
-"@concordium/wallet-connectors@0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@concordium/wallet-connectors/-/wallet-connectors-0.1.0.tgz#83ae71fcae822e4acefce442f47c0ed153311c8b"
-  integrity sha512-YjT3AdtKljFTRkWDbGPE3P7w/oToYTavfoJXgKVvWcgTKRcy/vmXoKGBCHbGxBuhj+W7klFH9e4AWPSkbCsK2g==
+"@concordium/wallet-connectors@0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@concordium/wallet-connectors/-/wallet-connectors-0.2.0.tgz#7d8d4b6feb256d6c3fca52444350559ed2f8639e"
+  integrity sha512-kA1hWXIqtVrKqMmOfIhA55/Txg+woX5Dmtvn+4UVViTcYFSLAZ5fMdEDqmbXr1oAwHMTzxcGq+VWi7RCaYt9qQ==
   dependencies:
     "@concordium/browser-wallet-api-helpers" "^2.0.0"
     "@walletconnect/qrcode-modal" "^1.8.0"
