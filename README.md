@@ -51,5 +51,5 @@ This command will build the app with default settings and deploy it in a HTTPd s
 
 The Compose spec is parameterized as follows:
 
-- `PIGGYBANK_IMAGE` (default: `piggybank:test`): Image to build and/or start. Remove the `--build` flag to start an existing image without building it.
-- `PIGGYBANK_PORT` (default: `8080`): Port to run the server on.
+-   `PIGGYBANK_IMAGE` (default: `piggybank:test`): Image to build and/or start. Remove the `--build` flag to start an existing image without building it.
+-   `PIGGYBANK_PORT` (default: `8080`): Port to run the server on.

@@ -16,7 +16,7 @@ export function decodePiggybankState(buffer: Buffer, contract: Info, queryTime: 
     return {
         contract,
         isSmashed: Boolean(state),
-        amount: microCcdToCcdString(contract.amount.microGtuAmount),
+        amount: microCcdToCcdString(contract.amount.microCcdAmount),
         ownerAddress: contract.owner.address,
         queryTime,
     };

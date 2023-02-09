@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AccountAddress, GtuAmount, JsonRpcClient } from '@concordium/web-sdk';
+import { AccountAddress, CcdAmount, JsonRpcClient } from '@concordium/web-sdk';
 import { Result, ResultAsync } from 'neverthrow';
 import { Alert, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { resultFromTruthy } from './util';
@@ -9,7 +9,7 @@ export interface Info {
     version: number;
     index: bigint;
     name: string;
-    amount: GtuAmount;
+    amount: CcdAmount;
     owner: AccountAddress;
     methods: string[];
 }
@@ -156,7 +156,7 @@ export function ContractManager(props: ModalProps) {
                                     </Row>
                                     <Row>
                                         <Col sm={2}>Balance:</Col>
-                                        <Col sm={10}>{currentContract.amount.microGtuAmount.toString()} μCCD</Col>
+                                        <Col sm={10}>{currentContract.amount.microCcdAmount.toString()} μCCD</Col>
                                     </Row>
                                     <Row>
                                         <Col sm={2}>Methods:</Col>
