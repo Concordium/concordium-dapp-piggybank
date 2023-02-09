@@ -3,7 +3,7 @@ import { AccountAddress, CcdAmount, JsonRpcClient } from '@concordium/web-sdk';
 import { Result, ResultAsync } from 'neverthrow';
 import { Alert, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { resultFromTruthy } from './util';
-import { refreshPiggybankState, State } from './Piggybank';
+import { refreshPiggybankState, PiggybankState } from './state';
 
 export interface Info {
     version: number;
@@ -102,7 +102,7 @@ export function ContractManager(props: ModalProps) {
 
     const [show, setShow] = useState(false);
     const [currentContract, setCurrentContract] = useState<Info>();
-    const [currentPiggybankState, setCurrentPiggybankState] = useState<Result<State, string>>();
+    const [currentPiggybankState, setCurrentPiggybankState] = useState<Result<PiggybankState, string>>();
     useEffect(() => {
         resultFromTruthy(currentContract, 'no contract selected')
             .asyncAndThen((c) => ResultAsync.fromPromise(refreshPiggybankState(rpc, c), (e) => (e as Error).message))

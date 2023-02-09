@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { Alert, Button, Col, Container, Row, Spinner } from 'react-bootstrap';
-import { CcdAmount, HttpProvider, JsonRpcClient } from '@concordium/web-sdk';
+import { HttpProvider, JsonRpcClient } from '@concordium/web-sdk';
 import { Result, ResultAsync } from 'neverthrow';
 import { ArrowRepeat } from 'react-bootstrap-icons';
 import {
@@ -14,9 +14,11 @@ import {
 import { ContractManager, Info, refresh } from './Contract';
 import { BROWSER_WALLET, DEFAULT_CONTRACT_INDEX, TESTNET, WALLET_CONNECT } from './config';
 import WalletConnect2 from './WalletConnect2';
-import Piggybank, { refreshPiggybankState, State } from './Piggybank';
-import { deposit, resultFromTruthy, smash } from './util';
+import Piggybank from './Piggybank';
+import { resultFromTruthy } from './util';
 import BrowserWallet from './BrowserWallet';
+import { usePiggybank } from './usePiggybank';
+import { refreshPiggybankState, PiggybankState } from './state';
 
 const rpc = new JsonRpcClient(new HttpProvider(TESTNET.jsonRpcUrl));
 
@@ -50,7 +52,7 @@ export default function App(props: WalletConnectionProps) {
     const [contract, setContract] = useState<Info>();
 
     // Piggybank state is duplicated in Contract component. State is redundantly refreshed after selecting a new contract.
-    const [piggybankState, setPiggybankState] = useState<Result<State, string>>();
+    const [piggybankState, setPiggybankState] = useState<Result<PiggybankState, string>>();
     useEffect(() => {
         resultFromTruthy(contract, 'no contract selected')
             .asyncAndThen((c) => ResultAsync.fromPromise(refreshPiggybankState(rpc, c), (e) => (e as Error).message))
@@ -60,52 +62,7 @@ export default function App(props: WalletConnectionProps) {
     // Select default contract.
     useEffect(() => refreshContract(DEFAULT_CONTRACT_INDEX, setContract), []);
 
-    // TODO Need an interface ('canSmash', 'handleSubmitDeposit', etc.).
-    const canUpdate = Boolean(account);
-    const canSmash = canUpdate && account === contract?.owner.address;
-    const handleSubmitDeposit = useCallback(
-        (amount: bigint) =>
-            Result.combine([
-                resultFromTruthy(connection, 'no connection initialized'),
-                resultFromTruthy(account, 'no account connected'),
-                resultFromTruthy(contract, 'no contract'),
-            ])
-                .asyncAndThen(([client, account, contract]) =>
-                    ResultAsync.fromPromise(
-                        deposit(client, new CcdAmount(amount), account, contract),
-                        (e) => (e as Error).message
-                    )
-                )
-                .map((txHash) => {
-                    console.debug(`${TESTNET.ccdScanBaseUrl}/?dcount=1&dentity=transaction&dhash=${txHash}`);
-                    return txHash;
-                })
-                .match(
-                    (txHash) => console.log('deposit transaction submitted', { hash: txHash }),
-                    (e) => console.error('cannot submit deposit transaction', { error: e })
-                ),
-        [connection, account, contract]
-    );
-    const handleSubmitSmash = useCallback(
-        () =>
-            Result.combine([
-                resultFromTruthy(connection, 'no connection initialized'),
-                resultFromTruthy(account, 'no account connected'),
-                resultFromTruthy(contract, 'no contract'),
-            ])
-                .asyncAndThen(([client, account, contract]) =>
-                    ResultAsync.fromPromise(smash(client, account, contract), (e) => (e as Error).message)
-                )
-                .map((txHash) => {
-                    console.debug(`${TESTNET.ccdScanBaseUrl}/?dcount=1&dentity=transaction&dhash=${txHash}`);
-                    return txHash;
-                })
-                .match(
-                    (txHash) => console.log('smash transaction submitted', { hash: txHash }),
-                    (e) => console.error('cannot submit smash transaction', { error: e })
-                ),
-        [connection, account, contract]
-    );
+    const { canDeposit, canSmash, deposit, smash } = usePiggybank(connection, account, contract);
     return (
         <Container>
             <Row>
@@ -143,24 +100,18 @@ export default function App(props: WalletConnectionProps) {
             </Row>
             <Row>
                 <Col>
-                    <>
-                        {activeConnectorError && <Alert variant="danger">{activeConnectorError}</Alert>}
-                        {!activeConnectorError && activeConnectorType && !activeConnector && (
-                            <Spinner animation="border" />
-                        )}
-                        {connectError && <Alert variant="danger">Connection error: {connectError}</Alert>}
-                        {activeConnector && !account && (
-                            <Button type="button" onClick={connect} disabled={isConnecting}>
-                                {isConnecting && 'Connecting...'}
-                                {!isConnecting && activeConnectorType === BROWSER_WALLET && 'Connect Browser Wallet'}
-                                {!isConnecting && activeConnectorType === WALLET_CONNECT && 'Connect Mobile Wallet'}
-                            </Button>
-                        )}
-                        {activeConnector instanceof BrowserWalletConnector && <BrowserWallet account={account} />}
-                        {activeConnector instanceof WalletConnectConnector && (
-                            <WalletConnect2 connection={connection} />
-                        )}
-                    </>
+                    {activeConnectorError && <Alert variant="danger">Connector error: {activeConnectorError}</Alert>}
+                    {!activeConnectorError && activeConnectorType && !activeConnector && <Spinner animation="border" />}
+                    {connectError && <Alert variant="danger">Connect error: {connectError}</Alert>}
+                    {activeConnector && !account && (
+                        <Button type="button" onClick={connect} disabled={isConnecting}>
+                            {isConnecting && 'Connecting...'}
+                            {!isConnecting && activeConnectorType === BROWSER_WALLET && 'Connect Browser Wallet'}
+                            {!isConnecting && activeConnectorType === WALLET_CONNECT && 'Connect Mobile Wallet'}
+                        </Button>
+                    )}
+                    {activeConnector instanceof BrowserWalletConnector && <BrowserWallet account={account} />}
+                    {activeConnector instanceof WalletConnectConnector && <WalletConnect2 connection={connection} />}
                 </Col>
             </Row>
             <hr />
@@ -195,10 +146,10 @@ export default function App(props: WalletConnectionProps) {
                                 <h6>Update</h6>
                                 <p>Everyone can make deposits to the Piggybank. Only the owner can smash it.</p>
                                 <Piggybank
-                                    submitDeposit={handleSubmitDeposit}
-                                    submitSmash={handleSubmitSmash}
-                                    canUpdate={canUpdate}
+                                    canDeposit={canDeposit}
                                     canSmash={canSmash}
+                                    deposit={deposit}
+                                    smash={smash}
                                 />
                             </>
                         ),

@@ -1,65 +1,18 @@
-import { JsonRpcClient, toBuffer } from '@concordium/web-sdk';
 import { err, ok } from 'neverthrow';
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Col, Form, InputGroup, Row } from 'react-bootstrap';
 import { Hammer } from 'react-bootstrap-icons';
-import { Info } from './Contract';
-import { decodePiggybankState } from './buffer';
 import { resultFromTruthy } from './util';
 
-export async function refreshPiggybankState(rpc: JsonRpcClient, contract: Info) {
-    console.debug(`Refreshing piggybank state for contract ${contract.index.toString()}`);
-    const { version, name, index, methods } = contract;
-
-    const expectedMethods = ['insert', 'smash', 'view'].map((m) => `${name}.${m}`);
-    if (!expectedMethods.every(methods.includes.bind(methods))) {
-        throw new Error(
-            `contract "${name}" is not a piggy bank as it lacks at least one of the expected methods (${expectedMethods.join(
-                ', '
-            )})`
-        );
-    }
-
-    const method = `${name}.view`;
-    const result = await rpc.invokeContract({ contract: { index, subindex: BigInt(0) }, method });
-    if (!result) {
-        throw new Error(`invocation of method "${method}" on contract "${index}" returned no result`);
-    }
-    switch (result.tag) {
-        case 'failure': {
-            throw new Error(
-                `invocation of method "${method}" on v${version} contract "${index}" failed: ${JSON.stringify(
-                    result.reason
-                )}`
-            );
-        }
-        case 'success': {
-            const buffer = toBuffer(result.returnValue || '', 'hex');
-            return decodePiggybankState(buffer, contract, new Date());
-        }
-        default: {
-            throw new Error('unexpected result tag');
-        }
-    }
-}
-
-export interface State {
-    contract: Info;
-    isSmashed: boolean;
-    amount: string;
-    ownerAddress: string;
-    queryTime: Date;
-}
-
 interface Props {
-    submitDeposit: (amount: bigint) => void;
-    submitSmash: () => void;
-    canUpdate: boolean;
+    canDeposit: boolean;
     canSmash: boolean;
+    deposit: (amount: bigint) => void;
+    smash: () => void;
 }
 
 export default function Piggybank(props: Props) {
-    const { submitDeposit, submitSmash, canUpdate, canSmash } = props;
+    const { canDeposit, canSmash, deposit, smash } = props;
     const [depositInput, setDepositInput] = useState('');
     const [depositAmount, setDepositAmount] = useState<bigint>();
     const [validationError, setValidationError] = useState<string>();
@@ -81,10 +34,10 @@ export default function Piggybank(props: Props) {
     const handleSubmitDeposit = useCallback(() => {
         console.log(`Attempting to deposit ${depositAmount} uCCD.`);
         if (depositAmount) {
-            submitDeposit(depositAmount);
+            deposit(depositAmount);
             setDepositInput('');
         }
-    }, [depositAmount, submitDeposit]);
+    }, [depositAmount, deposit]);
     return (
         <Row>
             <Form.Group as={Col} md={8}>
@@ -97,14 +50,14 @@ export default function Piggybank(props: Props) {
                         onChange={(e) => setDepositInput(e.target.value)}
                         isInvalid={Boolean(validationError)}
                     />
-                    <Button variant="primary" onClick={handleSubmitDeposit} disabled={!canUpdate || !depositAmount}>
+                    <Button variant="primary" onClick={handleSubmitDeposit} disabled={!canDeposit || !depositAmount}>
                         Deposit
                     </Button>
                     <Form.Control.Feedback type="invalid">{validationError}</Form.Control.Feedback>
                 </InputGroup>
             </Form.Group>
             <Form.Group as={Col} md={4}>
-                <Button variant="danger" className="w-100" onClick={submitSmash} disabled={!canSmash || !canUpdate}>
+                <Button variant="danger" className="w-100" onClick={smash} disabled={!canSmash || !canDeposit}>
                     <Hammer />
                 </Button>
             </Form.Group>

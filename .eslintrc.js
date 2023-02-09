@@ -23,8 +23,9 @@ module.exports = {
         node: true,
     },
     rules: {
-        '@typescript-eslint/no-shadow': 'off',
         '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-shadow': 'off',
+        '@typescript-eslint/no-use-before-define': 'off',
         'import/prefer-default-export': 'off',
         'import/no-cycle': 'off',
         'neverthrow/must-use-result': 'off',
