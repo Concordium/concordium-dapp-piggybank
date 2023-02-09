@@ -156,7 +156,7 @@ export function ContractManager(props: ModalProps) {
                                     </Row>
                                     <Row>
                                         <Col sm={2}>Balance:</Col>
-                                        <Col sm={10}>{currentContract.amount.toString()} μCCD</Col>
+                                        <Col sm={10}>{currentContract.amount.microCcdAmount.toString()} μCCD</Col>
                                     </Row>
                                     <Row>
                                         <Col sm={2}>Methods:</Col>
