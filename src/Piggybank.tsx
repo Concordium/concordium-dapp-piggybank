@@ -57,7 +57,7 @@ export default function Piggybank(props: Props) {
                 </InputGroup>
             </Form.Group>
             <Form.Group as={Col} md={4}>
-                <Button variant="danger" className="w-100" onClick={smash} disabled={!canSmash || !canDeposit}>
+                <Button variant="danger" className="w-100" onClick={smash} disabled={!canSmash}>
                     <Hammer />
                 </Button>
             </Form.Group>
