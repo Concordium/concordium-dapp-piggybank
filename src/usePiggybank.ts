@@ -6,6 +6,7 @@ import { TESTNET } from './config';
 import { Info } from './Contract';
 import { resultFromTruthy } from './util';
 import { submitDeposit, submitSmash } from './transaction';
+import { errorString } from './error';
 
 export function usePiggybank(
     connection: WalletConnection | undefined,
@@ -24,7 +25,7 @@ export function usePiggybank(
                 .asyncAndThen(([client, account, contract]) =>
                     ResultAsync.fromPromise(
                         submitDeposit(client, new CcdAmount(amount), account, contract),
-                        (e) => (e as Error).message
+                        errorString
                     )
                 )
                 .map((txHash) => {
@@ -45,7 +46,7 @@ export function usePiggybank(
                 resultFromTruthy(contract, 'no contract'),
             ])
                 .asyncAndThen(([client, account, contract]) =>
-                    ResultAsync.fromPromise(submitSmash(client, account, contract), (e) => (e as Error).message)
+                    ResultAsync.fromPromise(submitSmash(client, account, contract), errorString)
                 )
                 .map((txHash) => {
                     console.debug(`${TESTNET.ccdScanBaseUrl}/?dcount=1&dentity=transaction&dhash=${txHash}`);

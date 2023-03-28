@@ -3,6 +3,7 @@ import { WalletConnectConnection, WalletConnection } from '@concordium/react-com
 import { useEffect, useState } from 'react';
 import { Result, ResultAsync } from 'neverthrow';
 import { PING_INTERVAL_MS } from './config';
+import { errorString } from './error';
 
 interface Props {
     connection: WalletConnection | undefined;
@@ -16,7 +17,7 @@ export default function WalletConnect2({ connection }: Props) {
             // Set up ping loop.
             const interval = setInterval(() => {
                 const start = Date.now();
-                ResultAsync.fromPromise(connection.ping(), (e) => (e as Error).message)
+                ResultAsync.fromPromise(connection.ping(), errorString)
                     .map(() => Date.now() - start)
                     .then(setPingDurationMs);
             }, PING_INTERVAL_MS);

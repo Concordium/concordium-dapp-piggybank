@@ -19,10 +19,12 @@ import { resultFromTruthy } from './util';
 import BrowserWallet from './BrowserWallet';
 import { usePiggybank } from './usePiggybank';
 import { refreshPiggybankState, PiggybankState } from './state';
+import { errorString } from './error';
 
 const rpc = new JsonRpcClient(new HttpProvider(TESTNET.jsonRpcUrl));
 
 function refreshContract(index: bigint, setContract: React.Dispatch<Info | undefined>) {
+    // TODO Store and display error instead of just logging it.
     refresh(rpc, index).then(setContract).catch(console.error);
 }
 
@@ -55,7 +57,7 @@ export default function App(props: WalletConnectionProps) {
     const [piggybankState, setPiggybankState] = useState<Result<PiggybankState, string>>();
     useEffect(() => {
         resultFromTruthy(contract, 'no contract selected')
-            .asyncAndThen((c) => ResultAsync.fromPromise(refreshPiggybankState(rpc, c), (e) => (e as Error).message))
+            .asyncAndThen((c) => ResultAsync.fromPromise(refreshPiggybankState(rpc, c), errorString))
             .then(setPiggybankState);
     }, [contract]);
 
