@@ -4,6 +4,7 @@ import { Result, ResultAsync } from 'neverthrow';
 import { Alert, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { resultFromTruthy } from './util';
 import { refreshPiggybankState, PiggybankState } from './state';
+import { errorString } from './error';
 
 export interface Info {
     version: number;
@@ -47,7 +48,7 @@ export function ContractSelector(props: Props) {
         setIsLoading(true);
         resultFromTruthy(input, undefined)
             .andThen(parseContractIndex)
-            .asyncAndThen((index) => ResultAsync.fromPromise(refresh(rpc, index), (e) => (e as Error).message))
+            .asyncAndThen((index) => ResultAsync.fromPromise(refresh(rpc, index), errorString))
             .match<[Info?, string?]>(
                 (c) => [c, undefined],
                 (e) => [undefined, e]
@@ -105,7 +106,7 @@ export function ContractManager(props: ModalProps) {
     const [currentPiggybankState, setCurrentPiggybankState] = useState<Result<PiggybankState, string>>();
     useEffect(() => {
         resultFromTruthy(currentContract, 'no contract selected')
-            .asyncAndThen((c) => ResultAsync.fromPromise(refreshPiggybankState(rpc, c), (e) => (e as Error).message))
+            .asyncAndThen((c) => ResultAsync.fromPromise(refreshPiggybankState(rpc, c), errorString))
             .then(setCurrentPiggybankState);
     }, [rpc, currentContract]);
 
