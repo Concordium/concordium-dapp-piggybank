@@ -1,8 +1,7 @@
-import { WalletConnection } from '@concordium/react-components';
+import { TESTNET, WalletConnection } from '@concordium/react-components';
 import { Result, ResultAsync } from 'neverthrow';
 import { useCallback } from 'react';
 import { CcdAmount } from '@concordium/web-sdk';
-import { TESTNET } from './config';
 import { Info } from './Contract';
 import { resultFromTruthy } from './util';
 import { submitDeposit, submitSmash } from './transaction';

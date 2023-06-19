@@ -19,9 +19,7 @@ export async function submitDeposit(connection: WalletConnection, amount: CcdAmo
     return connection.signAndSendTransaction(
         account,
         AccountTransactionType.Update,
-        contractUpdatePayload(amount, contract, 'insert'),
-        {},
-        ''
+        contractUpdatePayload(amount, contract, 'insert')
     );
 }
 
@@ -29,8 +27,6 @@ export async function submitSmash(connection: WalletConnection, account: string,
     return connection.signAndSendTransaction(
         account,
         AccountTransactionType.Update,
-        contractUpdatePayload(new CcdAmount(BigInt(0)), contract, 'smash'),
-        {},
-        ''
+        contractUpdatePayload(new CcdAmount(BigInt(0)), contract, 'smash')
     );
 }

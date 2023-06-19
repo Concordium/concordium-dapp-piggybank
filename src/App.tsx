@@ -5,14 +5,15 @@ import { HttpProvider, JsonRpcClient } from '@concordium/web-sdk';
 import { Result, ResultAsync } from 'neverthrow';
 import { ArrowRepeat } from 'react-bootstrap-icons';
 import {
-    BrowserWalletConnector,
     useConnect,
     useConnection,
+    BrowserWalletConnector,
+    TESTNET,
     WalletConnectConnector,
     WalletConnectionProps,
 } from '@concordium/react-components';
 import { ContractManager, Info, refresh } from './Contract';
-import { BROWSER_WALLET, DEFAULT_CONTRACT_INDEX, TESTNET, WALLET_CONNECT } from './config';
+import { BROWSER_WALLET, DEFAULT_CONTRACT_INDEX, WALLET_CONNECT } from './config';
 import WalletConnect2 from './WalletConnect2';
 import Piggybank from './Piggybank';
 import { resultFromTruthy } from './util';
