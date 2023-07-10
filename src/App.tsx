@@ -21,6 +21,7 @@ import BrowserWallet from './BrowserWallet';
 import { usePiggybank } from './usePiggybank';
 import { refreshPiggybankState, PiggybankState } from './state';
 import { errorString } from './error';
+import packageInfo from '../package.json';
 
 const rpc = new JsonRpcClient(new HttpProvider(TESTNET.jsonRpcUrl));
 
@@ -162,6 +163,15 @@ export default function App(props: WalletConnectionProps) {
                     )}
                 </Col>
             </Row>
+            <hr />
+            Version: {packageInfo.version} |{' '}
+            <a
+                href="https://developer.concordium.software/en/mainnet/smart-contracts/tutorials/piggy-bank/index.html"
+                target="_blank"
+                rel="noreferrer"
+            >
+                Explore the piggy bank tutorial here.
+            </a>
         </Container>
     );
 }
