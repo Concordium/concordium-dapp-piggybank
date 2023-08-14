@@ -1,4 +1,4 @@
-import { JsonRpcClient, toBuffer } from '@concordium/web-sdk';
+import { ConcordiumGRPCClient, toBuffer } from '@concordium/web-sdk';
 import { Buffer } from 'buffer/';
 import { microCcdToCcdString } from './amount';
 import { Info } from './Contract';
@@ -11,7 +11,7 @@ export interface PiggybankState {
     queryTime: Date;
 }
 
-export async function refreshPiggybankState(rpc: JsonRpcClient, contract: Info) {
+export async function refreshPiggybankState(rpc: ConcordiumGRPCClient, contract: Info) {
     console.debug(`Refreshing piggybank state for contract ${contract.index.toString()}`);
     const { version, name, index, methods } = contract;
 

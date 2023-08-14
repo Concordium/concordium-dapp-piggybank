@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AccountAddress, CcdAmount, JsonRpcClient } from '@concordium/web-sdk';
+import { AccountAddress, CcdAmount, ConcordiumGRPCClient } from '@concordium/web-sdk';
 import { Result, ResultAsync } from 'neverthrow';
 import { Alert, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { resultFromTruthy } from './util';
@@ -17,11 +17,11 @@ export interface Info {
 
 interface Props {
     children: React.ReactNode;
-    rpc: JsonRpcClient;
+    rpc: ConcordiumGRPCClient;
     setContract: React.Dispatch<Info | undefined>;
 }
 
-export async function refresh(rpc: JsonRpcClient, index: bigint) {
+export async function refresh(rpc: ConcordiumGRPCClient, index: bigint) {
     console.debug(`Refreshing info for contract ${index.toString()}`);
     const info = await rpc.getInstanceInfo({ index, subindex: BigInt(0) });
     if (!info) {
@@ -93,7 +93,7 @@ export function ContractSelector(props: Props) {
 }
 
 interface ModalProps {
-    rpc: JsonRpcClient;
+    rpc: ConcordiumGRPCClient;
     contract: Info | undefined;
     setContract: React.Dispatch<Info | undefined>;
 }
