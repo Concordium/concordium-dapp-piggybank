@@ -13,7 +13,7 @@ module.exports = {
         ecmaFeatures: {
             jsx: true,
         },
-        project: ['./tsconfig.json'],
+        project: ['./tsconfig.eslint.json'],
         createDefaultProgram: true,
         tsconfigRootDir: __dirname,
     },
@@ -25,6 +25,7 @@ module.exports = {
     rules: {
         '@typescript-eslint/no-explicit-any': 'off',
         '@typescript-eslint/no-shadow': 'off',
+        '@typescript-eslint/no-empty-function': 'off',
         '@typescript-eslint/no-use-before-define': 'off',
         'import/prefer-default-export': 'off',
         'import/no-cycle': 'off',
