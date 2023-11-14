@@ -21,13 +21,14 @@ export interface PiggybankState {
 export async function refreshPiggybankState(rpc: ConcordiumGRPCClient, contract: Info) {
     console.debug(`Refreshing piggybank state for contract ${contract.index.toString()}`);
     const { version, name, index, methods } = contract;
+    const contractName = ContractName.toString(name);
 
-    const expectedMethods = ['insert', 'smash', 'view'].map((m) => `${ContractName.toString(name)}.${m}`);
-    if (!expectedMethods.every((e) => methods.map(ReceiveName.toString).includes(e))) {
+    const expectedMethods = ['insert', 'smash', 'view'].map((m) => `${contractName}.${m}`);
+    const methodNames = methods.map(ReceiveName.toString);
+    if (!expectedMethods.every((e) => methodNames.includes(e))) {
+        const methodNames = expectedMethods.join(', ');
         throw new Error(
-            `contract "${ContractName.toString(
-                name
-            )}" is not a piggy bank as it lacks at least one of the expected methods (${expectedMethods.join(', ')})`
+            `contract "${contractName}" is not a piggy bank as it lacks at least one of the expected methods (${methodNames})`
         );
     }
 
@@ -46,7 +47,11 @@ export async function refreshPiggybankState(rpc: ConcordiumGRPCClient, contract:
             );
         }
         case 'success': {
-            const buffer = Buffer.from(ReturnValue.toBuffer(result.returnValue ?? ReturnValue.empty()));
+            if (result.returnValue === undefined) {
+                throw new Error('Return value unexpectedly not found in successful invocation result');
+            }
+
+            const buffer = Buffer.from(ReturnValue.toBuffer(result.returnValue));
             return decodePiggybankState(buffer, contract, new Date());
         }
         default: {
@@ -57,7 +62,6 @@ export async function refreshPiggybankState(rpc: ConcordiumGRPCClient, contract:
 
 function decodePiggybankState(buffer: Buffer, contract: Info, queryTime: Date): PiggybankState {
     const [state] = decodeByte(buffer, 0);
-    console.log(state);
     return {
         contract,
         isSmashed: Boolean(state),

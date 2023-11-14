@@ -126,9 +126,6 @@ export function ContractManager(props: ModalProps) {
     };
     const canSelect = Boolean(currentPiggybankState?.isOk());
 
-    console.log('contract', currentContract);
-    console.log('state', currentPiggybankState);
-
     return (
         <>
             <Button variant="outline-dark" size="sm" onClick={handleShow}>
