@@ -166,9 +166,7 @@ export default function App(props: WalletConnectionProps) {
                                 />
                             </>
                         ),
-                        (e) => (
-                            <Alert variant="danger">{e}</Alert>
-                        )
+                        (e) => <Alert variant="danger">{e}</Alert>
                     )}
                 </Col>
             </Row>

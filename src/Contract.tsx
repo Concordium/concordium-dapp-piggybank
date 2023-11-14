@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { AccountAddress, CcdAmount, ConcordiumGRPCClient } from '@concordium/web-sdk';
+import {
+    AccountAddress,
+    CcdAmount,
+    ConcordiumGRPCClient,
+    ContractAddress,
+    ContractName,
+    InitName,
+    ReceiveName,
+} from '@concordium/web-sdk';
 import { Result, ResultAsync } from 'neverthrow';
 import { Alert, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { resultFromTruthy } from './util';
@@ -9,10 +17,10 @@ import { errorString } from './error';
 export interface Info {
     version: number;
     index: bigint;
-    name: string;
-    amount: CcdAmount;
-    owner: AccountAddress;
-    methods: string[];
+    name: ContractName.Type;
+    amount: CcdAmount.Type;
+    owner: AccountAddress.Type;
+    methods: ReceiveName.Type[];
 }
 
 interface Props {
@@ -23,17 +31,17 @@ interface Props {
 
 export async function refresh(rpc: ConcordiumGRPCClient, index: bigint) {
     console.debug(`Refreshing info for contract ${index.toString()}`);
-    const info = await rpc.getInstanceInfo({ index, subindex: BigInt(0) });
+    const info = await rpc.getInstanceInfo(ContractAddress.create(index, 0));
     if (!info) {
         throw new Error(`contract ${index} not found`);
     }
 
     const { version, name, owner, amount, methods } = info;
     const prefix = 'init_';
-    if (!name.startsWith(prefix)) {
+    if (!InitName.toString(name).startsWith(prefix)) {
         throw new Error(`name "${name}" doesn't start with "init_"`);
     }
-    return { version, index, name: name.substring(prefix.length), amount, owner, methods };
+    return { version, index, name: ContractName.fromInitName(name), amount, owner, methods };
 }
 
 const parseContractIndex = Result.fromThrowable(BigInt, () => 'invalid contract index');
@@ -140,7 +148,7 @@ export function ContractManager(props: ModalProps) {
                                     <Row>
                                         <Col sm={2}>Name:</Col>
                                         <Col sm={10}>
-                                            <code>{currentContract.name}</code>
+                                            <code>{ContractName.toString(currentContract.name)}</code>
                                         </Col>
                                     </Row>
                                     <Row>
@@ -161,7 +169,9 @@ export function ContractManager(props: ModalProps) {
                                     </Row>
                                     <Row>
                                         <Col sm={2}>Methods:</Col>
-                                        <Col sm={10}>{currentContract.methods.join(', ')}</Col>
+                                        <Col sm={10}>
+                                            {currentContract.methods.map(ReceiveName.toString).join(', ')}
+                                        </Col>
                                     </Row>
                                     <Row>
                                         <Col sm={2}>Platform:</Col>
@@ -176,9 +186,7 @@ export function ContractManager(props: ModalProps) {
                                             {isSmashed ? 'smashed' : 'not smashed'}.
                                         </Alert>
                                     ),
-                                    (e) => (
-                                        <Alert variant="danger">{e}</Alert>
-                                    )
+                                    (e) => <Alert variant="danger">{e}</Alert>
                                 )}
                             </>
                         )}

@@ -91,12 +91,8 @@ export default function WalletConnect2({ connection }: Props) {
                 </ul>
             </Alert>
             {pingDurationMs?.match(
-                (d) => (
-                    <div>Ping time: {d} ms</div>
-                ),
-                (e) => (
-                    <Alert variant="danger">Ping error: {e}</Alert>
-                )
+                (d) => <div>Ping time: {d} ms</div>,
+                (e) => <Alert variant="danger">Ping error: {e}</Alert>
             )}
             {disconnectError && <Alert variant="danger">Disconnect error: {disconnectError}</Alert>}
             <Button

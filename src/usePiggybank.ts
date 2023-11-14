@@ -23,7 +23,7 @@ export function usePiggybank(
             ])
                 .asyncAndThen(([client, account, contract]) =>
                     ResultAsync.fromPromise(
-                        submitDeposit(client, new CcdAmount(amount), account, contract),
+                        submitDeposit(client, CcdAmount.fromMicroCcd(amount), account, contract),
                         errorString
                     )
                 )
