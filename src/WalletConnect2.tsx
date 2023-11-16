@@ -1,5 +1,5 @@
 import { Alert, Button } from 'react-bootstrap';
-import { WalletConnectConnection, WalletConnection } from '@concordium/react-components';
+import { WalletConnectConnection, WalletConnection, useDisconnect } from '@concordium/react-components';
 import { useEffect, useState } from 'react';
 import { Result, ResultAsync } from 'neverthrow';
 import { PING_INTERVAL_MS } from './config';
@@ -30,9 +30,7 @@ export default function WalletConnect2({ connection }: Props) {
         return undefined;
     }, [connection]);
     const [disconnectError, setDisconnectError] = useState('');
-    useEffect(() => {
-        setDisconnectError('');
-    }, [connection]);
+    const { disconnect, isDisconnecting } = useDisconnect(connection, setDisconnectError);
     const connectedSession = connection instanceof WalletConnectConnection && connection.session;
     if (!connection || !connectedSession) {
         return null;
@@ -95,15 +93,8 @@ export default function WalletConnect2({ connection }: Props) {
                 (e) => <Alert variant="danger">Ping error: {e}</Alert>
             )}
             {disconnectError && <Alert variant="danger">Disconnect error: {disconnectError}</Alert>}
-            <Button
-                onClick={() =>
-                    connection.disconnect().catch((e) => {
-                        console.log('ping error', { e });
-                        setDisconnectError((e as Error).message);
-                    })
-                }
-            >
-                Disconnect
+            <Button onClick={disconnect} disabled={isDisconnecting}>
+                {isDisconnecting ? 'Disconnecting...' : 'Disconnect'}
             </Button>
         </>
     );
