@@ -4,7 +4,7 @@ on:
       - dapp-piggybank/*
 
 jobs:
-  release-base-image:
+  release-dapp-piggybank-image:
     uses: concordium/.github/.github/workflows/docker-release-workflow.yaml@main
     with:
       SERVICE_NAME: "dapp-piggybank"
