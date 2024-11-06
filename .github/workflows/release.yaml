@@ -1,0 +1,14 @@
+on:
+  push:
+    tags:
+      - dapp-piggybank/*
+
+jobs:
+  release-base-image:
+    uses: concordium/.github/.github/workflows/docker-release-workflow.yaml@main
+    with:
+      SERVICE_NAME: "dapp-piggybank"
+      BUILD_ARGS: |
+        build_image=node:16-slim
+      DOCKER_FILE_PATH: Dockerfile
+    secrets: inherit

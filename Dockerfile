@@ -7,6 +7,7 @@ COPY package.json yarn.lock ./
 RUN yarn install
 COPY . .
 RUN yarn build
+LABEL build_image=${build_image}
 
 FROM httpd:2-alpine
 COPY --from=build /build/build /usr/local/apache2/htdocs
