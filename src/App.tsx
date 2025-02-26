@@ -40,7 +40,8 @@ export default function App(props: WalletConnectionProps) {
     } = props;
     const rpc = useGrpcClient(network);
     const { connection, setConnection, account } = useConnection(connectedAccounts, genesisHashes);
-    const { connect, isConnecting, connectError } = useConnect(activeConnector, setConnection);
+    const [connectError, setConnectError] = useState('');
+    const { connect, isConnecting } = useConnect(activeConnector, setConnection, setConnectError);
 
     useEffect(() => {
         if (activeConnector) {
